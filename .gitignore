@@ -28,6 +28,9 @@ env.bak/
 venv.bak/
 
 # Environment Variables
+backend/.env
+backend/.env.local
+backend/.env.*.local
 .env
 .env.local
 .env.*.local
@@ -37,18 +40,25 @@ venv.bak/
 .idea/
 *.swp
 *.swo
-*~
-.DS_Store
 
 # Model files (large files)
-models/*.pt
-models/*.pth
-models/*.onnx
-models/*.weights
+backend/models/*.pt
+backend/models/*.pth
+backend/models/*.onnx
+backend/models/*.weights
 
 # Temporary files
-tmp/*
-!tmp/.gitkeep
+backend/tmp/*
+!backend/tmp/.gitkeep
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+*.wmv
+*.webm
 
 # Logs
 *.log
@@ -67,5 +77,61 @@ logs/
 .coverage
 htmlcov/
 
-# OS
+# Large files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Generated files
+project_structure.txt
+SETUP_GUIDE.md
+TESTING_GUIDE.md
+IMPLEMENTATION_COMPLETE.md
+
+# User-specific
+*.local
+local_settings.py
+
+# Node modules
+node_modules/
+
+# Backup files
+*.bak
+*.backup
+*.old
+*~
+
+# Credentials and secrets
+secrets/
+credentials/
+*.key
+*.pem
+*.crt
+*.pfx
+
+# Documentation builds
+docs/_build/
+site/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
 Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
