@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body id="body" class="bg-white text-gray-800 flex items-center justify-center min-h-screen">
+
+<div class="bg-white p-10 rounded-3xl shadow-xl w-96 text-center">
+  <h1 class="text-3xl font-bold mb-6">Profile</h1>
+  <div id="profileInfo" class="text-left mb-6 border p-4 rounded h-48 overflow-auto">
+    <!-- Profile details injected here -->
+  </div>
+
+  <button onclick="updateProfile()" class="bg-blue-600 hover:bg-blue-700 p-3 rounded-lg text-white font-semibold mb-2">Update Profile</button>
+  <button onclick="goHome()" class="bg-gray-400 hover:bg-gray-500 p-3 rounded-lg text-white font-semibold">Back to Home</button>
+</div>
+
+<script>
+  let theme = localStorage.getItem('theme') || 'light';
+  let lang = localStorage.getItem('language') || 'en';
+  document.body.className = (theme==='dark'?'bg-gray-900 text-white':'bg-white text-gray-800') + " flex items-center justify-center min-h-screen";
+
+  let username = localStorage.getItem('username') || '';
+  let password = localStorage.getItem('password') || '';
+  let otherDetails = localStorage.getItem('otherDetails') || '';
+
+  const profileDiv = document.getElementById('profileInfo');
+  function renderProfile() {
+    profileDiv.innerHTML = '';
+    if(!username || !password){
+      profileDiv.innerHTML = 'Profile incomplete. Please update your profile.';
+    } else {
+      profileDiv.innerHTML = `<p>Username: ${username}</p>
+                              <p>Password: ${password}</p>
+                              <p>Other Details: ${otherDetails}</p>`;
+    }
+  }
+  renderProfile();
+
+  function updateProfile(){
+    username = prompt("Enter Username:", username) || username;
+    password = prompt("Enter Password:", password) || password;
+    otherDetails = prompt("Enter other details:", otherDetails) || otherDetails;
+
+    localStorage.setItem('username', username);
+    localStorage.setItem('password', password);
+    localStorage.setItem('otherDetails', otherDetails);
+
+    renderProfile();
+    speak("Profile updated successfully.");
+  }
+
+  function goHome(){ window.location.href='index.html'; }
+
+  function speak(text){
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = lang;
+    utter.rate = 1;
+    window.speechSynthesis.speak(utter);
+  }
+
+  window.onload = ()=>{
+    speak("Your profile information is displayed. You can update it if required.");
+  }
+</script>
+</body>
+</html>
