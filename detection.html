@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detection | AI Mobility Detection</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white flex items-center justify-center min-h-screen text-gray-800">
+
+<div class="bg-white p-10 rounded-3xl shadow-xl w-96 text-center">
+  <h1 class="text-3xl font-bold mb-6">Object Detection</h1>
+
+  <p class="mb-4 text-gray-600">Upload a video file or say "upload file" to select a video.</p>
+
+  <input type="file" id="videoFile" accept="video/*" class="mb-4 w-full">
+
+  <button id="submitBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-semibold w-full mb-4">Submit Video</button>
+
+  <div id="videoPreview" class="mb-4"></div>
+  <div id="detectionResult" class="p-4 bg-gray-100 rounded h-40 overflow-auto text-left"></div>
+
+  <button id="backBtn" class="bg-gray-400 hover:bg-gray-500 p-3 rounded-lg text-white font-semibold w-full">Back to Home</button>
+</div>
+
+<script>
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.continuous = true;
+recognition.interimResults = false;
+recognition.lang = 'en-IN';
+
+const videoFile = document.getElementById('videoFile');
+const submitBtn = document.getElementById('submitBtn');
+const videoPreview = document.getElementById('videoPreview');
+const detectionResult = document.getElementById('detectionResult');
+const backBtn = document.getElementById('backBtn');
+
+// ----------------- Speak helper -----------------
+function speak(text){
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1;
+  window.speechSynthesis.speak(utter);
+}
+
+// ----------------- Video preview -----------------
+function loadVideoPreview(file){
+  const url = URL.createObjectURL(file);
+  videoPreview.innerHTML = '';
+  const videoEl = document.createElement('video');
+  videoEl.src = url;
+  videoEl.controls = true;
+  videoEl.width = 320;
+  videoPreview.appendChild(videoEl);
+  speak("Video loaded successfully. Say submit to detect objects.");
+}
+
+// ----------------- Fake Detection -----------------
+function detectObjects(file){
+  // In real scenario, send 'file' to backend or convert model to browser format
+  const simulatedResults = ["Person on right", "Car is crossing the person", "Traffic light is green"];
+  detectionResult.innerHTML = "<strong>Detected Objects:</strong><br>" + simulatedResults.join("<br>");
+  simulatedResults.forEach(obj => speak(obj));
+}
+
+// ----------------- Submit Video -----------------
+function submitVideo(){
+  if(videoFile.files.length === 0){
+    speak("Please select a video file first.");
+    return;
+  }
+  const file = videoFile.files[0];
+  detectObjects(file);
+}
+
+// ----------------- Voice Commands -----------------
+function handleVoiceCommand(text){
+  text = text.toLowerCase().trim();
+  if(text.includes("upload file")){
+    videoFile.click();
+    speak("Please select a video file.");
+  } else if(text.includes("submit")){
+    submitVideo();
+  } else if(text.includes("back") || text.includes("home")){
+    speak("Going back to home.");
+    setTimeout(()=>window.location.href='index.html',500);
+  }
+}
+
+recognition.onresult = (event)=>{
+  const transcript = event.results[event.resultIndex][0].transcript;
+  handleVoiceCommand(transcript);
+};
+recognition.onerror = (event)=>console.error("Speech Recognition Error:", event.error);
+
+// ----------------- Event Listeners -----------------
+window.onload = ()=>{
+  speak("Welcome to object detection. Click anywhere to start voice commands.");
+  document.body.addEventListener("click", ()=>{
+    recognition.start();
+    speak("Voice recognition started. You can say upload file, submit, or back to home.");
+  }, {once:true});
+};
+
+videoFile.addEventListener("change", ()=>loadVideoPreview(videoFile.files[0]));
+submitBtn.addEventListener("click", submitVideo);
+backBtn.addEventListener("click", ()=>window.location.href='index.html');
+</script>
+</body>
+</html>

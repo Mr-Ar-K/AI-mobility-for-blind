@@ -1,174 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | Object Detection</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<title>Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 flex justify-center items-center min-h-screen relative">
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-  <!-- Title -->
-  <h1 class="text-4xl font-bold text-blue-600 absolute top-16 left-1/2 transform -translate-x-1/2 text-center">
-    Object Detection
-  </h1>
+  <div class="bg-white shadow-2xl rounded-3xl p-10 w-96 text-center">
+    <h2 class="text-3xl font-bold text-blue-600 mb-6">Login</h2>
 
-  <!-- Voice instruction -->
-  <div id="voicePrompt" class="absolute top-36 left-1/2 transform -translate-x-1/2 text-center text-gray-700">
-    Click anywhere to start voice login
-  </div>
+    <input id="userid" type="text" placeholder="Username" class="w-full border p-3 rounded mb-4 text-lg">
+    <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded mb-4 text-lg">
 
-  <!-- Login Card -->
-  <div class="bg-white p-8 rounded-2xl shadow-md w-96 text-center">
-    <h2 class="text-2xl font-bold mb-6">Login</h2>
+    <button onclick="login()" class="w-full bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700 mb-3">Login</button>
+    <button onclick="startVoiceLogin()" class="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700">🎤 Voice Login</button>
 
-    <!-- Username input -->
-    <input type="text" id="username" placeholder="Username" class="w-full border p-2 rounded mb-4">
-
-    <!-- Password input with show/hide eye button -->
-    <div class="relative w-full mb-4">
-      <input
-        id="password"
-        type="password"
-        placeholder="Password"
-        class="w-full border p-2 pr-12 rounded"
-      />
-      <button
-        id="togglePassword"
-        type="button"
-        class="absolute inset-y-0 right-2 flex items-center px-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-        aria-label="Show password"
-      >
-        <!-- Eye icon -->
-        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-        <!-- Eye-off icon -->
-        <svg id="eyeOffIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.058 10.058 0 012.223-3.558M6.1 6.1A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.99 9.99 0 01-4.042 4.9M3 3l18 18" />
-        </svg>
-      </button>
-    </div>
-
-    <button id="loginBtn" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition mb-2">
-      Login
-    </button>
-
-    <p class="text-gray-500 mt-2 text-sm">Speak your username and password</p>
+    <p class="text-gray-500 text-sm mt-3">You can speak your username and password.</p>
   </div>
 
   <script>
-    // -------- Eye Toggle for Password --------
-    const pwd = document.getElementById('password');
-    const toggleBtn = document.getElementById('togglePassword');
-    const eye = document.getElementById('eyeIcon');
-    const eyeOff = document.getElementById('eyeOffIcon');
+    let step = 0; // 0 = waiting for username, 1 = waiting for password
 
-    toggleBtn.addEventListener('click', () => {
-      const isPassword = pwd.type === 'password';
-      pwd.type = isPassword ? 'text' : 'password';
-      eye.classList.toggle('hidden');
-      eyeOff.classList.toggle('hidden');
-      toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
-    });
-
-    // -------- Speech Recognition Setup --------
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = true; // continuous listening
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
-
-    // -------- Speech Synthesis --------
-    function speak(text, callback) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1;
-      utterance.onend = () => { if (callback) callback(); };
-      speechSynthesis.speak(utterance);
+    function speak(t){
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang = 'en-IN'; u.rate = 1;
+      speechSynthesis.speak(u);
     }
 
-    // -------- Handle Voice Commands --------
-    function handleVoiceCommand(text) {
-      text = text.toLowerCase().trim();
-      const usernameField = document.getElementById("username");
-      const passwordField = document.getElementById("password");
+    function login(){
+      const id = document.getElementById('userid').value;
+      const pw = document.getElementById('password').value;
+      if(id && pw){
+        speak("Login successful. Redirecting to detection page.");
+        window.location.href = "detection.html";
+      } else speak("Please enter both username and password.");
+    }
 
-      // ----- Set Username -----
-      if (text.includes("username is")) {
-        let username = text.replace("username is", "").trim();
-        username = username.replace(/[.,!?;:]$/, "").substring(0, 20);
-        if (username.length > 0) {
-          usernameField.value = username;
-          speak(`Username recorded as ${username}. Now say your password.`);
+    function startVoiceLogin(){
+      speak("Say your username now.");
+      const rec = new(window.SpeechRecognition||window.webkitSpeechRecognition)();
+      rec.lang = 'en-IN';
+      rec.onresult = e => {
+        const txt = e.results[0][0].transcript;
+        if(step === 0){
+          document.getElementById('userid').value = txt;
+          step = 1;
+          speak("Username recorded. Now say your password.");
         } else {
-          speak("I did not catch your username. Please say it again.");
-        }
-      }
-
-      // ----- Set Password -----
-      else if (text.includes("password is")) {
-        let password = text.replace("password is", "").trim();
-        password = password.replace(/[.,!?;:]$/, "").substring(0, 20);
-        if (password.length > 0) {
-          passwordField.value = password;
+          document.getElementById('password').value = txt;
           speak("Password recorded. Say login to continue.");
-        } else {
-          speak("I did not catch your password. Please say it again.");
+          step = 2;
         }
-      }
-
-      // ----- Login -----
-      else if (text.includes("login")) {
-        if (usernameField.value === "" || passwordField.value === "") {
-          speak("Please fill in both username and password before logging in.");
-        } else {
-          speak("Logging in...");
-          recognition.stop(); // stop listening once login is triggered
-          setTimeout(() => window.location.href = "upload.html", 1000);
-        }
-      }
+      };
+      rec.onend = () => {
+        if(step < 2) startVoiceLogin();
+        else listenForLogin();
+      };
+      rec.start();
     }
 
-    // -------- Start recognition on first click --------
-    window.onload = () => {
-      speak("Click anywhere to start voice login.", () => {
-        const promptDiv = document.getElementById("voicePrompt");
+    function listenForLogin(){
+      const rec2 = new(window.SpeechRecognition||window.webkitSpeechRecognition)();
+      rec2.lang = 'en-IN';
+      rec2.onresult = e => {
+        if(e.results[0][0].transcript.toLowerCase().includes("login")){
+          login();
+        } else {
+          speak("Say login to continue.");
+          listenForLogin();
+        }
+      };
+      rec2.start();
+    }
 
-        document.body.addEventListener("click", () => {
-          speak("Voice recognition started. Say your username like 'username is ...'", () => {
-            recognition.start();
-          });
-          promptDiv.style.display = "none";
-        }, { once: true });
-      });
-    };
-
-    // -------- Recognition Result --------
-    recognition.onresult = (event) => {
-      const transcript = event.results[event.resultIndex][0].transcript;
-      console.log("Voice Input:", transcript);
-      handleVoiceCommand(transcript); // process continuously
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Speech Recognition Error:", event.error);
-    };
-
-    // -------- Manual Login Button --------
-    document.getElementById("loginBtn").addEventListener("click", () => {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-
-      if (username === "" || password === "") {
-        speak("Please fill in both username and password before logging in.");
-      } else {
-        speak("Logging in...");
-        setTimeout(() => window.location.href = "upload.html", 1000);
-      }
-    });
+    window.onload = () => speak("Welcome to the login page. You can speak or type your details.");
   </script>
 
 </body>
