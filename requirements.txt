@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+ultralytics
+opencv-python
+aiofiles
+python-multipart
+sqlalchemy
+psycopg2-binary
+pydantic-settings

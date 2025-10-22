@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Signup - AI Mobility Detection</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #1a237e, #3949ab);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      margin: 0;
+    }
+
+    .signup-container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 40px 50px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+      width: 350px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #00e676;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      cursor: pointer;
+      color: #000;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #69f0ae;
+    }
+
+    .voice-btn {
+      margin-top: 10px;
+      background-color: #ffeb3b;
+      color: #000;
+      font-size: 16px;
+    }
+
+    .link {
+      margin-top: 20px;
+      display: block;
+      color: #fff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="signup-container">
+    <h2>Sign Up</h2>
+    <input type="text" id="signup-username" placeholder="Enter Username" />
+    <button class="voice-btn" onclick="startVoiceInput('signup-username')">🎙️ Speak Username</button>
+
+    <input type="email" id="signup-email" placeholder="Enter Email" />
+    <button class="voice-btn" onclick="startVoiceInput('signup-email')">🎙️ Speak Email</button>
+
+    <input type="password" id="signup-password" placeholder="Enter Password" />
+    <button class="voice-btn" onclick="startVoiceInput('signup-password')">🎙️ Speak Password</button>
+
+    <button onclick="signup()">Sign Up</button>
+    <a href="login.html" class="link">Already have an account? Login</a>
+  </div>
+
+  <script>
+    function speakText(text) {
+      const speech = new SpeechSynthesisUtterance(text);
+      speech.lang = 'en-IN';
+      window.speechSynthesis.speak(speech);
+    }
+
+    function startVoiceInput(fieldId) {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "en-IN";
+      recognition.start();
+      speakText("Please say your " + fieldId.replace('signup-', ''));
+
+      recognition.onresult = function (event) {
+        const spokenText = event.results[0][0].transcript;
+        document.getElementById(fieldId).value = spokenText;
+        speakText(fieldId.replace('signup-', '') + " recorded as " + spokenText);
+      };
+    }
+
+    async function signup() {
+      const username = document.getElementById("signup-username").value.trim();
+      const email = document.getElementById("signup-email").value.trim();
+      const password = document.getElementById("signup-password").value.trim();
+
+      if (username && email && password) {
+        try {
+          // Call backend API
+          const response = await fetch('http://localhost:8000/users/signup', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              username: username,
+              email: email,
+              password: password
+            })
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            // Save user data to localStorage
+            localStorage.setItem("user_id", userData.id);
+            localStorage.setItem("username", userData.username);
+            localStorage.setItem("email", userData.email);
+            
+            speakText("Signup successful. Redirecting to login page.");
+            setTimeout(() => {
+              window.location.href = "login.html";
+            }, 2000);
+          } else {
+            const errorData = await response.json();
+            speakText("Signup failed: " + (errorData.detail || "Unknown error"));
+          }
+        } catch (error) {
+          console.error("Signup error:", error);
+          speakText("Network error. Please make sure the backend server is running.");
+        }
+      } else {
+        speakText("Please fill all the fields.");
+      }
+    }
+  </script>
+</body>
+</html>

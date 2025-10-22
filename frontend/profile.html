@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body id="body" class="bg-white text-gray-800 flex items-center justify-center min-h-screen">
+
+<div class="bg-white p-10 rounded-3xl shadow-xl w-96 text-center">
+  <h1 class="text-3xl font-bold mb-6">Profile</h1>
+  <div id="profileInfo" class="text-left mb-6 border p-4 rounded h-48 overflow-auto">
+    <!-- Profile details injected here -->
+  </div>
+
+  <button onclick="updateProfile()" class="bg-blue-600 hover:bg-blue-700 p-3 rounded-lg text-white font-semibold mb-2">Update Profile</button>
+  <button onclick="goHome()" class="bg-gray-400 hover:bg-gray-500 p-3 rounded-lg text-white font-semibold">Back to Home</button>
+</div>
+
+<script>
+  let theme = localStorage.getItem('theme') || 'light';
+  let lang = localStorage.getItem('language') || 'en';
+  document.body.className = (theme==='dark'?'bg-gray-900 text-white':'bg-white text-gray-800') + " flex items-center justify-center min-h-screen";
+
+  let userId = localStorage.getItem('user_id') || '';
+  let username = localStorage.getItem('username') || '';
+  let email = localStorage.getItem('email') || '';
+
+  const profileDiv = document.getElementById('profileInfo');
+  
+  async function renderProfile() {
+    profileDiv.innerHTML = '<p style="text-align:center;">Loading history...</p>';
+    
+    if(!userId){
+      profileDiv.innerHTML = '<p style="color:red;">Not logged in. Please login first.</p>';
+      speak("Please login first to view your profile.");
+      return;
+    }
+
+    try {
+      // Fetch detection history from backend
+      const response = await fetch(`http://localhost:8000/history/${userId}`);
+      
+      if (response.ok) {
+        const historyData = await response.json();
+        
+        // Build profile HTML
+        let html = `
+          <p><strong>Username:</strong> ${username}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>User ID:</strong> ${userId}</p>
+          <hr style="margin: 10px 0;">
+          <p><strong>Detection History:</strong></p>
+        `;
+        
+        if (historyData.length === 0) {
+          html += '<p style="color:gray;">No detection history yet.</p>';
+        } else {
+          html += '<div style="max-height: 200px; overflow-y: auto;">';
+          historyData.forEach((item, index) => {
+            const date = new Date(item.timestamp).toLocaleString();
+            html += `
+              <div style="border: 1px solid #ddd; padding: 8px; margin: 5px 0; border-radius: 5px;">
+                <p style="font-size: 12px; color: gray;">${date}</p>
+                <p style="font-size: 14px;"><strong>Results:</strong></p>
+                <ul style="font-size: 13px; margin-left: 20px;">
+            `;
+            item.results.forEach(result => {
+              html += `<li>${result}</li>`;
+            });
+            html += `</ul></div>`;
+          });
+          html += '</div>';
+        }
+        
+        profileDiv.innerHTML = html;
+        speak(`Profile loaded. You have ${historyData.length} detection records.`);
+      } else {
+        profileDiv.innerHTML = '<p style="color:red;">Failed to load history.</p>';
+        speak("Failed to load detection history.");
+      }
+    } catch (error) {
+      console.error("Error fetching history:", error);
+      profileDiv.innerHTML = '<p style="color:red;">Network error. Make sure backend server is running.</p>';
+      speak("Network error. Cannot connect to server.");
+    }
+  }
+  
+  renderProfile();
+
+  function updateProfile(){
+    speak("Profile update feature coming soon. This will allow editing user details.");
+  }
+
+  function goHome(){ window.location.href='index.html'; }
+
+  function speak(text){
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = lang;
+    utter.rate = 1;
+    window.speechSynthesis.speak(utter);
+  }
+
+  window.onload = ()=>{
+    speak("Your profile information is displayed with detection history.");
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+  <div class="bg-white shadow-2xl rounded-3xl p-10 w-96 text-center">
+    <h2 class="text-3xl font-bold text-blue-600 mb-6">Login</h2>
+
+    <input id="userid" type="text" placeholder="Username" class="w-full border p-3 rounded mb-4 text-lg">
+    <input id="password" type="password" placeholder="Password" class="w-full border p-3 rounded mb-4 text-lg">
+
+    <button onclick="login()" class="w-full bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700 mb-3">Login</button>
+    <button onclick="startVoiceLogin()" class="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700">🎤 Voice Login</button>
+
+    <p class="text-gray-500 text-sm mt-3">You can speak your username and password.</p>
+  </div>
+
+  <script>
+    let step = 0; // 0 = waiting for username, 1 = waiting for password
+
+    function speak(t){
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang = 'en-IN'; u.rate = 1;
+      speechSynthesis.speak(u);
+    }
+
+    async function login(){
+      const id = document.getElementById('userid').value;
+      const pw = document.getElementById('password').value;
+      
+      if(id && pw){
+        try {
+          // Call backend API
+          const response = await fetch('http://localhost:8000/users/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              username: id,
+              password: pw
+            })
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            // Save user data to localStorage
+            localStorage.setItem("user_id", userData.id);
+            localStorage.setItem("username", userData.username);
+            localStorage.setItem("email", userData.email);
+            
+            speak("Login successful. Redirecting to detection page.");
+            setTimeout(() => {
+              window.location.href = "detection.html";
+            }, 1500);
+          } else {
+            const errorData = await response.json();
+            speak("Login failed: " + (errorData.detail || "Invalid credentials"));
+          }
+        } catch (error) {
+          console.error("Login error:", error);
+          speak("Network error. Please make sure the backend server is running.");
+        }
+      } else {
+        speak("Please enter both username and password.");
+      }
+    }
+
+    function startVoiceLogin(){
+      speak("Say your username now.");
+      const rec = new(window.SpeechRecognition||window.webkitSpeechRecognition)();
+      rec.lang = 'en-IN';
+      rec.onresult = e => {
+        const txt = e.results[0][0].transcript;
+        if(step === 0){
+          document.getElementById('userid').value = txt;
+          step = 1;
+          speak("Username recorded. Now say your password.");
+        } else {
+          document.getElementById('password').value = txt;
+          speak("Password recorded. Say login to continue.");
+          step = 2;
+        }
+      };
+      rec.onend = () => {
+        if(step < 2) startVoiceLogin();
+        else listenForLogin();
+      };
+      rec.start();
+    }
+
+    function listenForLogin(){
+      const rec2 = new(window.SpeechRecognition||window.webkitSpeechRecognition)();
+      rec2.lang = 'en-IN';
+      rec2.onresult = e => {
+        if(e.results[0][0].transcript.toLowerCase().includes("login")){
+          login();
+        } else {
+          speak("Say login to continue.");
+          listenForLogin();
+        }
+      };
+      rec2.start();
+    }
+
+    window.onload = () => speak("Welcome to the login page. You can speak or type your details.");
+  </script>
+
+</body>
+</html>

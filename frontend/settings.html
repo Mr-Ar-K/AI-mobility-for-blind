@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body id="body" class="bg-white text-gray-800 flex items-center justify-center min-h-screen">
+
+<div class="bg-white p-10 rounded-3xl shadow-xl w-96 text-center">
+  <h1 class="text-3xl font-bold mb-6">Settings</h1>
+
+  <div class="flex flex-col gap-4 text-left">
+    <label class="flex justify-between items-center">
+      Theme
+      <select id="themeSelect" class="border p-2 rounded">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
+
+    <label class="flex justify-between items-center">
+      Site Language
+      <select id="langSelect" class="border p-2 rounded">
+        <option value="en">English</option>
+        <option value="ta">Tamil</option>
+	<option value="tl">Telugu</option>
+	<option value="hin">Hindi</option>
+      </select>
+    </label>
+
+    <button onclick="saveSettings()" class="bg-blue-600 hover:bg-blue-700 p-3 rounded-lg text-white font-semibold">Save Settings</button>
+    <button onclick="goHome()" class="bg-gray-400 hover:bg-gray-500 p-3 rounded-lg text-white font-semibold">Back to Home</button>
+  </div>
+</div>
+
+<script>
+  let theme = localStorage.getItem('theme') || 'light';
+  let lang = localStorage.getItem('language') || 'en';
+  document.getElementById('themeSelect').value = theme;
+  document.getElementById('langSelect').value = lang;
+
+  function applySettings() {
+    document.body.className = (theme==='dark'?'bg-gray-900 text-white':'bg-white text-gray-800') + " flex items-center justify-center min-h-screen";
+  }
+
+  applySettings();
+
+  function saveSettings() {
+    theme = document.getElementById('themeSelect').value;
+    lang = document.getElementById('langSelect').value;
+    localStorage.setItem('theme', theme);
+    localStorage.setItem('language', lang);
+    applySettings();
+    speak("Settings saved successfully.");
+  }
+
+  function goHome(){ window.location.href='index.html'; }
+
+  function speak(text){
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = lang;
+    utter.rate = 1;
+    window.speechSynthesis.speak(utter);
+  }
+</script>
+</body>
+</html>
