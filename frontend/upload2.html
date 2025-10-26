@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <meta charset="UTF-8">
   <title>AI Video Detection Portal</title>
   <style>
@@ -92,7 +92,7 @@
       font-size: 1.07em;
       border-radius: 6px;
       border: none;
-      cursor: pointer;
+      cursor: pointer rys;
       color: white;
       background: #557323;
       transition: 0.2s;
@@ -109,22 +109,23 @@
 </head>
 <body>
   <div style="width:100vw; max-width:950px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; position:relative; height:48px;">
-  <button style="color:#444;background:none;border:none;font-size:2.2rem;cursor:pointer;padding:6px 16px 2px 16px;">
-    <i class="fa-solid fa-user"></i>
-  </button>
-  <button style="color:#444;background:none;border:none;font-size:2.2rem;cursor:pointer;padding:6px 16px 2px 16px;">
-    <i class="fa-solid fa-gear"></i>
-  </button>
-</div>
+    <button style="color:#444;background:none;border:none;font-size:2.2rem;cursor:pointer;padding:6px 16px 2px 16px;">
+      <i class="fa-solid fa-user"></i>
+    </button>
+    <button style="color:#444;background:none;border:none;font-size:2.2rem;cursor:pointer;padding:6px 16px 2px 16px;">
+      <i class="fa-solid fa-gear"></i>
+    </button>
+  </div>
+
   <div class="main-box">
     <nav>
-      <button class="nav-upload" onclick="showSection('upload')">Upload</button>
-      <button class="nav-detect" onclick="showSection('detect')">Results</button>
-      <button class="nav-live" onclick="showSection('live')">Live Detection</button>
-      <button class="nav-result" onclick="showSection('liveResult')">Live Results</button>
+      <button class="nav-upload"   onclick="showSection('upload')">Upload</button>
+      <button class="nav-detect"   onclick="showSection('detect')">Results</button>
+      <button class="nav-live"     onclick="showSection('live')">Live Detection</button>
+      <button class="nav-result"   onclick="showSection('liveResult')">Live Results</button>
     </nav>
 
-    <!-- Section 1: Upload -->
+    <!-- ==== Upload ==== -->
     <div id="upload" class="section-content">
       <h2>Upload Video</h2>
       <p>Upload your video for object detection.</p>
@@ -135,7 +136,7 @@
       </div>
     </div>
 
-    <!-- Section 2: Detection Results -->
+    <!-- ==== Detection Results ==== -->
     <div id="detect" class="section-content" style="display:none">
       <h2>Detected Objects</h2>
       <p id="detectionText">No detections yet.</p>
@@ -145,10 +146,10 @@
         <button onclick="repeatNarration()">Repeat</button>
         <button onclick="downloadResults()">Download</button>
       </div>
-      <div class="listening" id="listeningStatus" style="display:none;">🎤 Listening for your voice commands...</div>
+      <div class="listening" id="listeningStatus" style="display:none;">Listening for your voice commands...</div>
     </div>
 
-    <!-- Section 3: Live Detection -->
+    <!-- ==== Live Detection ==== -->
     <div id="live" class="section-content" style="display:none">
       <h2>Live Video Detection</h2>
       <p>Upload or start your live video stream for detection.</p>
@@ -160,7 +161,7 @@
       </div>
     </div>
 
-    <!-- Section 4: Live Results -->
+    <!-- ==== Live Results ==== -->
     <div id="liveResult" class="section-content" style="display:none">
       <h2>Live Detection Results</h2>
       <p id="liveDetectionText">Waiting for live detection results...</p>
@@ -174,24 +175,85 @@
   </div>
 
   <script>
-    // ====== GLOBALS ======
-    let recognition, isListening = false, lastNarrationText = "", lastLiveNarration = "";
+    // ================== GLOBALS ==================
+    let recognition, isListening = false;
+    let lastNarrationText = "", lastLiveNarration = "";
 
-    window.onload = function() {
+    // ================== SPEECH SETUP ==================
+    window.onload = function () {
       setupSpeechRecognition();
-      speakNarration("Welcome to AI Video Detection Portal. Say upload, results, live detection, or live results to navigate.");
+      speak("This is upload section where you can upload files and get objects detection in it");
     };
 
-    // ====== NAVIGATION ======
-    function showSection(id) {
-      document.querySelectorAll('.section-content').forEach(sec => sec.style.display = 'none');
-      document.getElementById(id).style.display = '';
-      speakNarration(You are in the ${id} section.);
+    function setupSpeechRecognition() {
+      if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = function (e) {
+        const cmd = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
+        handleVoiceCommand(cmd);
+      };
+      recognition.onend = () => { isListening = false; updateListeningUI(false); };
     }
 
-    // ====== UPLOAD SECTION ======
-    const uploadBtn = document.getElementById('uploadBtn');
-    const fileInput = document.getElementById('fileInput');
+    function startListening() {
+      if (isListening) return;
+      isListening = true;
+      updateListeningUI(true);
+      recognition.start();
+    }
+
+    function updateListeningUI(on) {
+      const status = document.getElementById('listeningStatus');
+      if (!status) return;
+      status.style.display = on ? 'block' : 'none';
+    }
+
+    // ================== NAVIGATION ==================
+    function showSection(id) {
+      document.querySelectorAll('.section-content').forEach(sec => sec.style.display = 'none');
+      document.getElementById(id).style.display = 'block';
+      speak(`You are in the ${id.replace(/([A-Z])/g, ' $1').toLowerCase()} section.`);
+    }
+
+    // ================== VOICE COMMAND HANDLER ==================
+    function handleVoiceCommand(cmd) {
+      // Global navigation
+      if (cmd.includes('upload')) { showSection('upload'); return; }
+      if (cmd.includes('result') || cmd.includes('detection')) { showSection('detect'); return; }
+      if (cmd.includes('live') && cmd.includes('detection')) { showSection('live'); return; }
+      if (cmd.includes('live') && cmd.includes('result')) { showSection('liveResult'); return; }
+      if (cmd.includes('go back') || cmd.includes('home')) { showSection('upload'); return; }
+
+      // Result-section commands (only when we are in detect)
+      if (document.getElementById('detect').style.display === 'block') {
+        if (cmd.includes('repeat')) { repeatNarration(); return; }
+        if (cmd.includes('download')) { downloadResults(); return; }
+      }
+
+      speak('Sorry, I didn\'t understand. Try upload, results, live detection, repeat, download, or go back.');
+    }
+
+    // ================== SPEAK UTILITY ==================
+    function speak(text, callback) {
+      if (!('speechSynthesis' in window)) { if (callback) callback(); return; }
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'en-US';
+      utter.rate = 1.05;
+      utter.pitch = 1.1;
+      utter.onend = () => {
+        if (callback) callback();
+      };
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    }
+
+    // ================== UPLOAD SECTION ==================
+    const uploadBtn   = document.getElementById('uploadBtn');
+    const fileInput   = document.getElementById('fileInput');
     const videoPlayer = document.getElementById('videoPlayer');
     const uploadPreview = document.getElementById('uploadPreview');
 
@@ -199,36 +261,40 @@
 
     fileInput.onchange = e => {
       const file = e.target.files[0];
-      if (file) {
-        videoPlayer.src = URL.createObjectURL(file);
-        uploadPreview.style.display = '';
-        speakNarration('Video uploaded successfully. Now detecting objects...');
+      if (!file) return;
+
+      videoPlayer.src = URL.createObjectURL(file);
+      uploadPreview.style.display = 'block';
+      speak('Processing the video....', () => {
         setTimeout(() => {
+          // ---- Simulated detection ----
+          const detected = ['Car', 'Person', 'Dog'];
+          const narration = `The detections are ${detected.join(', ')}.`;
+
           showSection('detect');
-          detectionsDiv.innerHTML = '<b>Detected Objects:</b> Car, Person, Dog';
-          lastNarrationText = 'Objects detected are car, person and dog.';
-          narrationDiv.innerHTML = '<b>Narration:</b> ' + lastNarrationText;
-          actionsDiv.style.display = 'flex';
-          speakNarration(lastNarrationText);
-        }, 2500);
-      }
+          document.getElementById('detections').innerHTML = '<b>Detected Objects:</b> ' + detected.join(', ');
+          document.getElementById('narration').innerHTML = '<b>Narration:</b> ' + narration;
+          document.getElementById('actions').style.display = 'flex';
+          lastNarrationText = narration;
+
+          speak('Processing completed... ' + narration, () => {
+            speak('Say repeat for repeating the detections again or say download for downloading the detections.', startListening);
+          });
+        }, 1500);
+      });
     };
 
-    // ====== DETECTION RESULTS ======
-    const detectionsDiv = document.getElementById('detections');
-    const narrationDiv = document.getElementById('narration');
-    const actionsDiv = document.getElementById('actions');
-    const listeningStatus = document.getElementById('listeningStatus');
-
+    // ================== RESULT SECTION ==================
     function repeatNarration() {
-      speakNarration(lastNarrationText);
+      speak(lastNarrationText);
     }
 
     function downloadResults() {
-      speakNarration('Results downloaded successfully.');
+      // In a real app you would create a Blob/JSON and trigger download
+      speak('Results downloaded successfully.');
     }
 
-    // ====== LIVE DETECTION SECTION ======
+    // ================== LIVE DETECTION ==================
     const liveBtn = document.getElementById('liveBtn');
     const liveInput = document.getElementById('liveInput');
     const liveVideo = document.getElementById('liveVideo');
@@ -239,56 +305,27 @@
       const file = e.target.files[0];
       if (file) {
         liveVideo.src = URL.createObjectURL(file);
-        liveVideoSection.style.display = '';
-        speakNarration('Live video uploaded. Click start live detection to proceed.');
+        liveVideoSection.style.display = 'block';
+        speak('Live video uploaded. Click start live detection to proceed.');
       }
     };
 
     function startLiveDetection() {
       showSection('liveResult');
-      document.getElementById('liveDetections').innerHTML = '<b>Detected in Live Feed:</b> Cat, Bicycle';
-      lastLiveNarration = 'In live detection, we found a cat and a bicycle.';
-      document.getElementById('liveNarration').innerHTML = '<b>Narration:</b> ' + lastLiveNarration;
-      speakNarration(lastLiveNarration);
+      const detected = ['Cat', 'Bicycle'];
+      const liveNarr = `In live detection, we found a ${detected.join(' and a ')}.`;
+      document.getElementById('liveDetections').innerHTML = '<b>Detected in Live Feed:</b> ' + detected.join(', ');
+      document.getElementById('liveNarration').innerHTML = '<b>Narration:</b> ' + liveNarr;
+      lastLiveNarration = liveNarr;
+      speak(liveNarr);
     }
 
-    // ====== LIVE RESULT SECTION ======
-    function repeatLiveNarration() {
-      speakNarration(lastLiveNarration);
-    }
-    function downloadLiveResults() {
-      speakNarration('Live detection results downloaded successfully.');
-    }
+    function repeatLiveNarration() { speak(lastLiveNarration); }
+    function downloadLiveResults() { speak('Live detection results downloaded successfully.'); }
 
-    // ====== SPEECH + VOICE ======
-    function setupSpeechRecognition() {
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-        recognition.onresult = function(event) {
-          const cmd = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
-          if (cmd.includes('upload')) showSection('upload');
-          else if (cmd.includes('result') || cmd.includes('detection')) showSection('detect');
-          else if (cmd.includes('live')) showSection('live');
-          else if (cmd.includes('back')) showSection('upload');
-          else speakNarration('Sorry, please say upload, results, or live detection.');
-        };
-      }
-    }
-
-    function speakNarration(text, callback) {
-      if ('speechSynthesis' in window) {
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'en-US';
-        utter.rate = 1.05;
-        utter.pitch = 1.1;
-        utter.onend = callback || null;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utter);
-      } else if (callback) callback();
-    }
+    // ================== AFTER COMMAND FEEDBACK ==================
+    // (The handler already says “Say go back…” after every recognized command)
+    // We just make sure the listening UI stays on until a new command is processed.
   </script>
 </body>
 </html>
