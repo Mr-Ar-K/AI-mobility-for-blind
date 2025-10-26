@@ -268,7 +268,7 @@
       speak('Processing the video....', () => {
         setTimeout(() => {
           // ---- Simulated detection ----
-          const detected = ['Car', 'Person', 'Dog'];
+          const detected = ['Car', 'Person', 'Bicycle','Zebra crossing'];
           const narration = `The detections are ${detected.join(', ')}.`;
 
           showSection('detect');
@@ -312,7 +312,7 @@
 
     function startLiveDetection() {
       showSection('liveResult');
-      const detected = ['Cat', 'Bicycle'];
+      const detected = ['Car', 'Bicycle','Person','Car'];
       const liveNarr = `In live detection, we found a ${detected.join(' and a ')}.`;
       document.getElementById('liveDetections').innerHTML = '<b>Detected in Live Feed:</b> ' + detected.join(', ');
       document.getElementById('liveNarration').innerHTML = '<b>Narration:</b> ' + liveNarr;
@@ -322,10 +322,6 @@
 
     function repeatLiveNarration() { speak(lastLiveNarration); }
     function downloadLiveResults() { speak('Live detection results downloaded successfully.'); }
-
-    // ================== AFTER COMMAND FEEDBACK ==================
-    // (The handler already says “Say go back…” after every recognized command)
-    // We just make sure the listening UI stays on until a new command is processed.
   </script>
 </body>
 </html>

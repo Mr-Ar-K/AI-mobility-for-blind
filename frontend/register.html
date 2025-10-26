@@ -36,8 +36,8 @@
         margin-bottom: 15px; 
         object-fit: cover; 
         display: block;
-        margin-left: auto;    /* <-- Add */
-        margin-right: auto;   /* <-- Add */
+        margin-left: auto;
+        margin-right: auto;
     }
     .form-section { 
         flex: 1; 
@@ -92,50 +92,47 @@
 </div>
 
 <script>
-// ---------- Voice Synthesis ----------
 function speak(text, callback) {
-    speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 1;
-    utter.onend = callback;
-    speechSynthesis.speak(utter);
+    speechSynthesis.cancel()
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.rate = 1
+    utter.onend = callback
+    speechSynthesis.speak(utter)
 }
 
-// ---------- Voice Recognition ----------
 function listenOnce(callback) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
-        alert("Your browser does not support Speech Recognition.");
-        return;
+        alert("Your browser does not support Speech Recognition")
+        return
     }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
 
     recognition.onresult = (event) => {
-        let speechResult = event.results[0][0].transcript.trim();
-        console.log("Heard:", speechResult);
-        callback(speechResult);
-    };
+        let speechResult = event.results[0][0].transcript.trim()
+        console.log("Heard:", speechResult)
+        callback(speechResult)
+    }
 
     recognition.onerror = (event) => {
-        console.log("Error:", event.error);
-        callback("");
-    };
+        console.log("Error:", event.error)
+        callback("")
+    }
 
-    recognition.start();
+    recognition.start()
 }
 
-// ---------- Photo Preview ----------
 function previewPhoto(event) {
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = function(){
-        document.getElementById('profilePhoto').src = reader.result;
-    };
-    reader.readAsDataURL(event.target.files[0]);
+        document.getElementById('profilePhoto').src = reader.result
+    }
+    reader.readAsDataURL(event.target.files[0])
 }
-// ---------- Fields Configuration ----------
+
 const fields = [
     {id: 'firstName', prompt: 'Say your first name'},
     {id: 'lastName', prompt: 'Say your last name'},
@@ -143,84 +140,70 @@ const fields = [
     {id: 'password', prompt: 'Say your password or type it manually'},
     {id: 'phone', prompt: 'Say your phone number'},
     {id: 'email', prompt: 'Say your email'}
-];
+]
 
-let currentField = 0;
+let currentField = 0
 
-// ---------- Clear All Fields ----------
 function clearFields() {
-    fields.forEach(f => document.getElementById(f.id).value = "");
-    document.getElementById('photoInput').value = "";
-    document.getElementById('profilePhoto').src = "https://via.placeholder.com/200";
+    fields.forEach(f => document.getElementById(f.id).value = "")
+    document.getElementById('photoInput').value = ""
+    document.getElementById('profilePhoto').src = "https://imgs.search.brave.com/rXjxpjdIfB2ywkHOMsqoRG0hS3opNqAPz-wCCUgufs0/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzUzLzdj/LzhhLzUzN2M4YTc1/ZjAxNTk4ZWI3NTU5/NTUyZjRjNGIwZGM3/LmpwZw"
 }
 
-// ---------- Voice-guided Input ----------
 function nextField() {
     if (currentField >= fields.length) {
-        speak("All fields detected. Say Register or click the button to continue.", () => {
-            listenRegisterCommand();
-        });
-        return;
+        speak("say Register or click the button to continue", listenRegisterCommand)
+        return
     }
-
-    const field = fields[currentField];
+    const field = fields[currentField]
+    document.getElementById(field.id).focus()
     speak(field.prompt, () => {
         listenOnce((text) => {
-            if (text) document.getElementById(field.id).value = text;
-            currentField++;
-            nextField();
-        });
-    });
+            if (text) document.getElementById(field.id).value = text
+            currentField++
+            nextField()
+        })
+    })
 }
 
-// ---------- Handle Register Command (Voice) ----------
 function listenRegisterCommand() {
     listenOnce((text) => {
         if (text.toLowerCase().includes("register")) {
-            checkAndSubmit();
+            checkAndSubmit()
         } else {
-            speak("Please say Register when you are ready.", () => {
-                listenRegisterCommand();
-            });
+            speak("Please say Register when you are ready", listenRegisterCommand)
         }
-    });
+    })
 }
 
-// ---------- Handle Manual Button Click ----------
 function manualRegister() {
-    checkAndSubmit();
+    checkAndSubmit()
 }
 
-// ---------- Check Fields and Submit ----------
 function checkAndSubmit() {
-    let emptyFields = fields.filter(f => !document.getElementById(f.id).value.trim());
+    let emptyFields = fields.filter(f => !document.getElementById(f.id).value.trim())
     if (emptyFields.length > 0) {
-        speak("Fill all fields. Let's start again from first name.", () => {
-            clearFields();
-            currentField = 0;
-            nextField();
-        });
-        return;
+        const nextMissingField = fields.find(f => !document.getElementById(f.id).value.trim())
+        speak(`Please fill ${nextMissingField.prompt}`, () => {
+            currentField = fields.indexOf(nextMissingField)
+            nextField()
+        })
+        return
     }
-    speak("Registered successfully!");
-    submitRegister();
+    speak("Registered successfully", submitRegister)
 }
 
-// ---------- Submit Registration ----------
 function submitRegister() {
-    const data = {};
-    fields.forEach(f => data[f.id] = document.getElementById(f.id).value);
-    data.photo = document.getElementById('photoInput').files[0] ? document.getElementById('photoInput').files[0].name : "No photo";
-    console.log("Registered Data:", data);
-    window.location.href = "homepage.html";
+    const data = {}
+    fields.forEach(f => data[f.id] = document.getElementById(f.id).value)
+    data.photo = document.getElementById('photoInput').files[0] ? document.getElementById('photoInput').files[0].name : "No photo"
+    console.log("Registered Data:", data)
+    window.location.href = "homepage.html"
 }
 
-// ---------- Start on Load ----------
 window.onload = () => {
-    speak("This is the register section.", () => {
-        nextField();
-    });
-};
+    speak("This is the register section", nextField)
+}
 </script>
 </body>
 </html>
