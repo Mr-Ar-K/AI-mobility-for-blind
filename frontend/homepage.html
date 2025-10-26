@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Object Detection App</title>
+  <style>
+    body {
+      background-color: #b6a4cc;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    .nav {
+      display: flex;
+      width: 100%;
+      max-width: 950px;
+      margin: 0 auto;
+    }
+    .nav button.upload-btn   { background-color: #09656b; }
+    .nav button.detect-btn   { background-color: #485e13; }
+    .nav button.about-btn    { background-color: #5b8edf; }
+    .nav button {
+      flex: 1;
+      border: none;
+      color: #fff;
+      font-size: 1.28rem;
+      padding: 18px 0;
+      cursor: pointer;
+      outline: none;
+      border-radius: 0;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .nav button:active,
+    .nav button:focus {
+      outline: 2px solid #ffd966;
+      z-index: 2;
+    }
+    .nav button:hover {
+      opacity: 0.92;
+      transform: scale(1.04);
+    }
+    .main {
+      margin: 24px auto;
+      width: 97vw;
+      max-width: 950px;
+      min-height: 67vh;
+      background: #4b4b4b;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.17);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      text-align: center;
+      padding: 32px 10px;
+    }
+    .main img {
+      width: 220px;
+      height: auto;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.28);
+    }
+    .features {
+      margin-top: 22px;
+      background: rgba(255,255,255,0.09);
+      padding: 15px 20px;
+      border-radius: 8px;
+      width: 80%;
+      text-align: left;
+    }
+    .features h3 {
+      color: #ffd966;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .features ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .features ul li::before {
+      content: "✔";
+      color: #90ee90;
+      margin-right: 8px;
+    }
+    @media (max-width: 600px) {
+      .nav button {
+        font-size: 1rem;
+        padding: 11px 0;
+      }
+      .main {
+        width: 98vw;
+        padding: 12px 2px;
+      }
+    }
+  </style>
+</head>
+<body onload="initVoiceGuide()">
+  <div style="width:100vw; max-width:950px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; position:relative; height:48px;">
+  <button style="color:#444;background:none;border:none;font-size:2.2rem;cursor:pointer;padding:6px 16px 2px 16px;">
+    <i class="fa-solid fa-user"></i>
+  </button>
+  <button style="color:#444;background:none;border:none;font-size:2.2rem;cursor:pointer;padding:6px 16px 2px 16px;">
+    <i class="fa-solid fa-gear"></i>
+  </button>
+</div>
+
+  <div class="nav">
+    <button class="upload-btn" onclick="showSection('upload')">Upload</button>
+    <button class="detect-btn" onclick="showSection('detections')">My Detections</button>
+    <button class="about-btn" onclick="showSection('about')">About</button>
+  </div>
+  <div id="content" class="main">
+    <!-- Image MUST be a real .png/.jpg, not a webpage -->
+  <img 
+  src="https://imgs.search.brave.com/qdydxa_jRHK1rwrAIpRIefnuiQz7s7RJ5q_1fPQJjdY/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly92aXNp/b25wbGF0Zm9ybS5h/aS93cC1jb250ZW50/L3VwbG9hZHMvMjAy/NC8wMS9vYmplY3Qt/ZGV0ZWN0aW9uLnBu/Zw"
+  alt="Object Detection Example"
+  width="300"
+  height="180"
+  style="border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.28); margin-bottom:20px; object-fit:cover; display:block;"
+/>
+
+    <p>This is an Object Detection Application. You can now access Upload, About, and My Detections.</p>
+    <div class="features">
+      <h3>Key Features</h3>
+      <ul>
+        <li>Upload images for object detection in real-time.</li>
+        <li>View and manage your previous detections easily.</li>
+        <li>Learn more about how the model works in the About section.</li>
+      </ul>
+    </div>
+  </div>
+  <script>
+    // Text-to-speech
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.lang = "en-US";
+      speechSynthesis.speak(utterance);
+    }
+
+    function initVoiceGuide() {
+      const message = "Say Upload to upload files to detect, or About to know more about the page, or My Detections to access your previous uploads.";
+      speak(message);
+      const check = setInterval(() => {
+        if (!speechSynthesis.speaking) {
+          clearInterval(check);
+          listenForCommand();
+        }
+      }, 1000);
+    }
+
+    function listenForCommand() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech recognition not supported in this browser.");
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.start();
+      recognition.onresult = (event) => {
+        const command = event.results[0][0].transcript.toLowerCase();
+        if (command.includes("upload")) {
+          speak("Opening upload section.");
+          showSection("upload");
+        } else if (command.includes("about")) {
+          speak("Opening about section.");
+          showSection("about");
+        } else if (command.includes("detections")) {
+          speak("Opening your detections.");
+          showSection("detections");
+        } else {
+          speak("I didn't understand. Please say Upload, About, or My Data.");
+          listenForCommand();
+        }
+      };
+      recognition.onerror = (event) => {
+        speak("I didn't catch that. Please try again.");
+        listenForCommand();
+      };
+    }
+
+    function showSection(section) {
+      if (section === "upload") {
+         setTimeout(() => window.location.href = "upload2.html", 1000);
+      } else if (section === "detections") {
+         setTimeout(() => window.location.href = "detections.html", 1000);
+      } else if (section === "about") {
+         setTimeout(() => window.location.href = "about.html", 1000);
+      }
+    }
+  </script>
+</body>
+</html>
