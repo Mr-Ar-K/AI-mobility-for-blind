@@ -139,8 +139,8 @@
         localStorage.setItem('username', user.username);
         localStorage.setItem('email', user.email);
         
-        speak('Login successful. Redirecting to upload page.', () => {
-          setTimeout(() => window.location.href = "upload2.html", 500);
+        speak('Login successful. Redirecting to homepage.', () => {
+          setTimeout(() => window.location.href = "homepage.html", 500);
         });
       } catch (error) {
         speak('Login failed: ' + error.message);
