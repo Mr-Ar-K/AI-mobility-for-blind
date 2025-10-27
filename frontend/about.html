@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About | Object Detection App</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      background: #b6a4cc;
+      font-family: Arial, sans-serif;
+      width: 100vw;
+    }
+    .nav {
+      display: flex;
+      width: 100%;
+      max-width: 950px;
+      margin: 0 auto;
+    }
+    .nav button.upload-btn   { background-color: #09656b; }
+    .nav button.detect-btn   { background-color: #485e13; }
+    .nav button.about-btn    { background-color: #5a210b; }
+    .nav button {
+      flex: 1;
+      border: none;
+      color: #fff;
+      font-size: 1.28rem;
+      padding: 18px 0;
+      cursor: pointer;
+      outline: none;
+      border-radius: 0;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .nav button:active,
+    .nav button:focus {
+      outline: 2px solid #000000;
+      z-index: 2;
+    }
+    .nav button:hover {
+      opacity: 0.92;
+      transform: scale(1.04);
+    }
+    /* This is now the main container */
+    .about-main {
+      background: #5a210b;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+      color: #fff;
+      /* move container a bit up */
+      margin: 36px auto 0 auto;
+      width: 97vw;
+      max-width: 950px;
+      min-height: 67vh;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 10px;
+    }
+    .about-main h1 {
+      color: #ffd966;
+      font-size: 2rem;
+      margin-bottom: 16px;
+      letter-spacing: .5px;
+    }
+    .about-main p {
+      font-size: 1.17rem;
+      line-height: 1.65;
+      margin-bottom: 20px;
+    }
+    .about-main ul {
+      font-size: 1.07rem;
+      text-align: left;
+      margin: 0 auto 0 auto;
+      padding: 0;
+      max-width: 490px;
+    }
+    .about-main ul li {
+      margin-bottom: 14px;
+      list-style: none;
+    }
+    .about-main ul li span.bullet {
+      color: #ffd966;
+      margin-right: 7px;
+    }
+    @media (max-width: 600px) {
+      .about-main { padding: 18px 4px;}
+      .about-main ul { max-width: 99vw;}
+    }
+  </style>
+</head>
+<body>
+  <div style="width:100vw; max-width:950px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; position:relative; height:48px;">
+  <button style="color:#444;background:none;border:none;font-size:2.2rem;cursor:pointer;padding:6px 16px 2px 16px;">
+    <i class="fa-solid fa-user"></i>
+  </button>
+  <button style="color:#444;background:none;border:none;font-size:2.2rem;cursor:pointer;padding:6px 16px 2px 16px;">
+    <i class="fa-solid fa-gear"></i>
+  </button>
+</div>
+
+  <div class="nav">
+    <button class="upload-btn" onclick="showSection('upload')">Upload</button>
+    <button class="detect-btn" onclick="showSection('data')">My Detections</button>
+    <button class="about-btn" onclick="showSection('about')">About</button>
+  </div>
+  <div class="about-main">
+    <h1>About The Object Detection Application</h1>
+    <p>
+       The About section explains the purpose and features of this site.
+    </p>
+    <ul id="about-list">
+      <li><span class="bullet">•</span>Upload your images and automatically detect objects in real-time using smart AI.</li>
+      <li><span class="bullet">•</span>Access the "My Detections" section to review and manage your previously detected objects.</li>
+      <li><span class="bullet">•</span>Learn how object detection models work and their uses in modern AI applications.</li>
+      <li><span class="bullet">•</span>Experience quick, accurate results with an easy-to-use interface.</li>
+    </ul>
+    <p>
+      Whether you're exploring AI, testing models, or simply curious about computer vision, this application makes object detection simple and interactive.
+    </p>
+  </div>
+  <script>
+    function speak(text, cb) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.lang = "en-US";
+      utterance.onend = () => cb && cb();
+      speechSynthesis.speak(utterance);
+    }
+    function runSpeechGuide() {
+      const intro = "This is the About page. Here is what this application does.";
+      const points = [
+        "Upload your images and automatically detect objects in real-time using smart AI.",
+        "Access the My Detections section to review and manage your previously detected objects.",
+        "Learn how object detection models work and their uses in modern AI applications.",
+        "Experience quick, accurate results with an easy-to-use interface."
+      ];
+      const outro = "Whether you're exploring AI, testing models, or simply curious about computer vision, this application makes object detection simple and interactive.";
+      const backMessage = "Say 'Go back' to go to the homepage.";
+      let i = 0;
+      function speakPoints() {
+        if (i < points.length) {
+          speak(points[i], () => {
+            i++;
+            speakPoints();
+          });
+        } else {
+          speak(outro, () => {
+            speak(backMessage, () => {
+              startListening();
+            });
+          });
+        }
+      }
+      speak(intro, () => speakPoints());
+    }
+    function startListening() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.start();
+      recognition.onresult = (event) => {
+        const command = event.results[0][0].transcript.toLowerCase();
+        if (command.includes("go back") || command.includes("back")) {
+          window.location.href = "homepage.html"; // Change to your homepage file
+        } else {
+          speak("Say 'Go back' to go to the homepage.", startListening);
+        }
+      };
+      recognition.onerror = () => {
+        speak("Say 'Go back' to go to the homepage.", startListening);
+      };
+    }
+    window.onload = runSpeechGuide;
+  </script>
+</body>
+</html>

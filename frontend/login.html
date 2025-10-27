@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Object Detection</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#A898BF] flex justify-center items-center min-h-screen relative">
+
+
+  <!-- Voice instruction -->
+  <div id="voicePrompt" class="absolute top-36 left-1/2 transform -translate-x-1/2 text-center text-white">
+    Click anywhere to start voice login
+  </div>
+<!-- Login Card -->
+<div class="bg-[#003366] rounded-2xl shadow-md w-96 text-center p-8 text-white">
+  <h2 class="text-2xl font-bold mb-6">Login</h2>
+<!-- Smaller input container -->
+<div class="mx-auto w-72"> 
+  <!-- Username input -->
+  <input type="text" id="username" placeholder="Username" class="w-full border border-[#ffffff] p-2 rounded mb-4 bg-[#ffffff] text-black placeholder-[#6b7280] focus:outline-none">
+
+  <!-- Password input with show/hide eye button -->
+  <div class="relative w-full mb-4">
+    <input
+      id="password"
+      type="password"
+      placeholder="Password"
+      class="w-full border border-[#ffffff] p-2 pr-12 rounded bg-[#ffffff] text-black placeholder-[#6b7280] focus:outline-none"
+    />
+  
+<button
+  id="togglePassword"
+  type="button"
+  class="absolute inset-y-0 right-4 flex items-right px-2 rounded-r outline-none focus:outline-none focus:ring-0"
+  aria-label="Show password">
+  </div>
+</div>
+
+
+ <div class="mx-auto w-48"> <!-- smaller than the input fields (w-72) -->
+  <button id="loginBtn" class="w-full bg-[#d78c42] hover:bg-[#379e0b] text-white p-2 rounded mb-2 transition">
+    Login
+  </button>
+</div>
+
+  <p class="mt-2 text-sm text-white">Speak your username and password</p>
+</div>
+  <script>
+    // -------- Eye Toggle for Password --------
+    const pwd = document.getElementById('password');
+    const toggleBtn = document.getElementById('togglePassword');
+    const eye = document.getElementById('eyeIcon');
+    const eyeOff = document.getElementById('eyeOffIcon');
+
+    toggleBtn.addEventListener('click', () => {
+      const isPassword = pwd.type === 'password';
+      pwd.type = isPassword ? 'text' : 'password';
+      eye.classList.toggle('hidden');
+      eyeOff.classList.toggle('hidden');
+      toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+    });
+
+    // -------- Speech Recognition Setup --------
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = true; // continuous listening
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    // -------- Speech Synthesis --------
+    function speak(text, callback) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.onend = () => { if (callback) callback(); };
+      speechSynthesis.speak(utterance);
+    }
+
+    // -------- Handle Voice Commands --------
+    function handleVoiceCommand(text) {
+      text = text.toLowerCase().trim();
+      const usernameField = document.getElementById("username");
+      const passwordField = document.getElementById("password");
+
+      // ----- Set Username -----
+      if (text.includes("username is")) {
+        let username = text.replace("username is", "").trim();
+        username = username.replace(/[.,!?;:]$/, "").substring(0, 20);
+        if (username.length > 0) {
+          usernameField.value = username;
+          speak(`Username recorded as ${username}. Now say your password.`);
+        } else {
+          speak("I did not catch your username. Please say it again.");
+        }
+      }
+
+      // ----- Set Password -----
+      else if (text.includes("password is")) {
+        let password = text.replace("password is", "").trim();
+        password = password.replace(/[.,!?;:]$/, "").substring(0, 20);
+        if (password.length > 0) {
+          passwordField.value = password;
+          speak("Password recorded. Say login to continue.");
+        } else {
+          speak("I did not catch your password. Please say it again.");
+        }
+      }
+
+      // ----- Login -----
+      else if (text.includes("login")) {
+        if (usernameField.value === "" || passwordField.value === "") {
+          speak("Please fill in both username and password before logging in.");
+        } else {
+          speak("Logging in...");
+          recognition.stop(); // stop listening once login is triggered
+          setTimeout(() => window.location.href = "upload.html", 1000);
+        }
+      }
+    }
+
+    // -------- Start recognition on first click --------
+    window.onload = () => {
+      speak("Click anywhere to start voice login.", () => {
+        const promptDiv = document.getElementById("voicePrompt");
+
+        document.body.addEventListener("click", () => {
+          speak("Voice recognition started. Say your username like 'username is ...'", () => {
+            recognition.start();
+          });
+          promptDiv.style.display = "none";
+        }, { once: true });
+      });
+    };
+
+    // -------- Recognition Result --------
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.resultIndex][0].transcript;
+      console.log("Voice Input:", transcript);
+      handleVoiceCommand(transcript); // process continuously
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech Recognition Error:", event.error);
+    };
+
+    // -------- Manual Login Button --------
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      if (username === "" || password === "") {
+        speak("Please fill in both username and password before logging in.");
+      } else {
+        speak("Logging in...");
+        setTimeout(() => window.location.href = "upload.html", 1000);
+      }
+    });
+  </script>
+
+</body>
+</html>
