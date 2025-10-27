@@ -36,3 +36,11 @@ app.include_router(detection.router)
 @app.get("/")
 def read_root():
     return {"message": "AI-Mobility-for-Blind Backend is running."}
+
+@app.get("/config")
+def get_config():
+    """Return backend configuration for frontend"""
+    return {
+        "backend_url": settings.Backend_PORT,
+        "backend_fallback": settings.Backend_PORT_FALLBACK
+    }
