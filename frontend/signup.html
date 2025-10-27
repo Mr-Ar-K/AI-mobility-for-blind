@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Signup - AI Mobility Detection</title>
+  <script src="config.js"></script>
   <style>
     body {
       font-family: "Poppins", sans-serif;
@@ -115,8 +116,9 @@
 
       if (username && email && password) {
         try {
-          // Call backend API
-          const response = await fetch('http://localhost:8000/users/signup', {
+          // Call backend API with dynamic URL
+          const backendUrl = await window.BackendAPI.getUrl();
+          const response = await fetch(`${backendUrl}/users/signup`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

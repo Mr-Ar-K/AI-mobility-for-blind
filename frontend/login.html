@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login | Object Detection</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
 </head>
 <body class="bg-[#A898BF] flex justify-center items-center min-h-screen relative">
 
@@ -113,8 +114,37 @@
         } else {
           speak("Logging in...");
           recognition.stop(); // stop listening once login is triggered
-          setTimeout(() => window.location.href = "upload.html", 1000);
+          performLogin(usernameField.value, passwordField.value);
         }
+      }
+    }
+
+    // -------- Login Function --------
+    async function performLogin(username, password) {
+      try {
+        const backendUrl = await window.BackendAPI.getUrl();
+        const response = await fetch(`${backendUrl}/users/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username.trim(), password: password.trim() })
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || 'Login failed');
+        }
+
+        const user = await response.json();
+        localStorage.setItem('user_id', user.id);
+        localStorage.setItem('username', user.username);
+        localStorage.setItem('email', user.email);
+        
+        speak('Login successful. Redirecting to upload page.', () => {
+          setTimeout(() => window.location.href = "upload2.html", 500);
+        });
+      } catch (error) {
+        speak('Login failed: ' + error.message);
+        console.error('Login error:', error);
       }
     }
 
@@ -145,14 +175,14 @@
 
     // -------- Manual Login Button --------
     document.getElementById("loginBtn").addEventListener("click", () => {
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
 
       if (username === "" || password === "") {
         speak("Please fill in both username and password before logging in.");
       } else {
         speak("Logging in...");
-        setTimeout(() => window.location.href = "upload.html", 1000);
+        performLogin(username, password);
       }
     });
   </script>

@@ -4,6 +4,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <meta charset="UTF-8">
   <title>AI Video Detection Portal</title>
+  <script src="config.js"></script>
   <style>
     body {
       background: #a795bc;
@@ -259,29 +260,59 @@
 
     uploadBtn.onclick = () => fileInput.click();
 
-    fileInput.onchange = e => {
+    fileInput.onchange = async e => {
       const file = e.target.files[0];
       if (!file) return;
 
       videoPlayer.src = URL.createObjectURL(file);
       uploadPreview.style.display = 'block';
-      speak('Processing the video....', () => {
-        setTimeout(() => {
-          // ---- Simulated detection ----
-          const detected = ['Car', 'Person', 'Bicycle','Zebra crossing'];
-          const narration = `The detections are ${detected.join(', ')}.`;
+      speak('Processing the video....');
 
-          showSection('detect');
-          document.getElementById('detections').innerHTML = '<b>Detected Objects:</b> ' + detected.join(', ');
-          document.getElementById('narration').innerHTML = '<b>Narration:</b> ' + narration;
-          document.getElementById('actions').style.display = 'flex';
-          lastNarrationText = narration;
+      // Get user_id from localStorage
+      const userId = localStorage.getItem('user_id');
+      if (!userId) {
+        speak('You must be logged in to upload videos. Redirecting to login page.');
+        setTimeout(() => window.location.href = 'login.html', 2000);
+        return;
+      }
 
-          speak('Processing completed... ' + narration, () => {
-            speak('Say repeat for repeating the detections again or say download for downloading the detections.', startListening);
-          });
-        }, 1500);
-      });
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const backendUrl = await window.BackendAPI.getUrl();
+        const response = await fetch(`${backendUrl}/detect/${userId}`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || 'Detection failed');
+        }
+
+        const detected = await response.json();
+        
+        if (!detected || detected.length === 0) {
+          throw new Error('No objects detected in the video');
+        }
+
+        const narration = `The detections are ${detected.join(', ')}.`;
+
+        showSection('detect');
+        document.getElementById('detections').innerHTML = '<b>Detected Objects:</b> ' + detected.join(', ');
+        document.getElementById('narration').innerHTML = '<b>Narration:</b> ' + narration;
+        document.getElementById('actions').style.display = 'flex';
+        lastNarrationText = narration;
+
+        speak('Processing completed... ' + narration, () => {
+          speak('Say repeat for repeating the detections again or say download for downloading the detections.', startListening);
+        });
+      } catch (err) {
+        speak('Detection failed: ' + err.message);
+        console.error('Detection error:', err);
+      }
     };
 
     // ================== RESULT SECTION ==================
@@ -311,13 +342,55 @@
     };
 
     function startLiveDetection() {
-      showSection('liveResult');
-      const detected = ['Car', 'Bicycle','Person','Car'];
-      const liveNarr = `In live detection, we found a ${detected.join(' and a ')}.`;
-      document.getElementById('liveDetections').innerHTML = '<b>Detected in Live Feed:</b> ' + detected.join(', ');
-      document.getElementById('liveNarration').innerHTML = '<b>Narration:</b> ' + liveNarr;
-      lastLiveNarration = liveNarr;
-      speak(liveNarr);
+      const userId = localStorage.getItem('user_id');
+      if (!userId) {
+        speak('You must be logged in for live detection. Redirecting to login page.');
+        setTimeout(() => window.location.href = 'login.html', 2000);
+        return;
+      }
+
+      // Get the video file from liveInput
+      const file = document.getElementById('liveInput').files[0];
+      if (!file) {
+        speak('Please upload a video first before starting live detection.');
+        return;
+      }
+
+      speak('Starting live detection...');
+
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('file', file);
+
+      window.BackendAPI.getUrl().then(backendUrl => {
+        fetch(`${backendUrl}/detect/${userId}`, {
+          method: 'POST',
+          body: formData
+        })
+        .then(async response => {
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.detail || 'Live detection failed');
+          }
+          return response.json();
+        })
+        .then(detected => {
+          if (!detected || detected.length === 0) {
+            throw new Error('No objects detected in live video');
+          }
+
+          showSection('liveResult');
+          const liveNarr = `In live detection, we found ${detected.join(', ')}.`;
+          document.getElementById('liveDetections').innerHTML = '<b>Detected in Live Feed:</b> ' + detected.join(', ');
+          document.getElementById('liveNarration').innerHTML = '<b>Narration:</b> ' + liveNarr;
+          lastLiveNarration = liveNarr;
+          speak(liveNarr);
+        })
+        .catch(err => {
+          speak('Live detection failed: ' + err.message);
+          console.error('Live detection error:', err);
+        });
+      });
     }
 
     function repeatLiveNarration() { speak(lastLiveNarration); }

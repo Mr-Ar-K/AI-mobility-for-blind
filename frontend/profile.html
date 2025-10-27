@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profile</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="config.js"></script>
 </head>
 <body id="body" class="bg-white text-gray-800 flex items-center justify-center min-h-screen">
 
@@ -39,8 +40,9 @@
     }
 
     try {
-      // Fetch detection history from backend
-      const response = await fetch(`http://localhost:8000/history/${userId}`);
+      // Fetch detection history from backend with dynamic URL
+      const backendUrl = await window.BackendAPI.getUrl();
+      const response = await fetch(`${backendUrl}/history/${userId}`);
       
       if (response.ok) {
         const historyData = await response.json();
