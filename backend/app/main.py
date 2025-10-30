@@ -21,12 +21,27 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# --- Load Model at Startup ---
+# --- Load All Three Models at Startup ---
 @app.on_event("startup")
 def load_model():
-    print(f"Loading model from: {settings.MODEL_PATH}")
-    app.state.model = YOLO(settings.MODEL_PATH)
-    print("Model loaded successfully.")
+    print("Loading multi-model detection system...")
+    
+    # Model 1: YOLOv8m (for general objects - cars, people, etc.)
+    print(f"Loading YOLOv8m model from: {settings.MODEL_PATH_YOLO}")
+    app.state.model_yolo = YOLO(settings.MODEL_PATH_YOLO)
+    print("✅ YOLOv8m model loaded successfully.")
+    
+    # Model 2: Traffic Lights specialist
+    print(f"Loading Traffic Lights model from: {settings.MODEL_PATH_TRAFFIC_LIGHTS}")
+    app.state.model_lights = YOLO(settings.MODEL_PATH_TRAFFIC_LIGHTS)
+    print("✅ Traffic Lights model loaded successfully.")
+    
+    # Model 3: Zebra Crossing specialist
+    print(f"Loading Zebra Crossing model from: {settings.MODEL_PATH_ZEBRA_CROSSING}")
+    app.state.model_zebra = YOLO(settings.MODEL_PATH_ZEBRA_CROSSING)
+    print("✅ Zebra Crossing model loaded successfully.")
+    
+    print("🎉 All models loaded successfully!")
 
 # --- Include Routers ---
 app.include_router(users.router)

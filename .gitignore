@@ -43,10 +43,10 @@ backend/.env.*.local
 *.swo
 
 # Model files (large files)
-backend/models/*.pt
-backend/models/*.pth
-backend/models/*.onnx
-backend/models/*.weights
+#backend/models/*.pt
+#backend/models/*.pth
+#backend/models/*.onnx
+#backend/models/*.weights
 
 # Temporary files
 backend/tmp/*

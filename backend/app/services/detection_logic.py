@@ -3,18 +3,39 @@ from collections import defaultdict
 from ultralytics import YOLO
 
 # ================================================================
-# CONFIGURATION (Adapted from Context 2)
+# CONFIGURATION - Multi-Model Detection System
 # ================================================================
 FRAME_GROUPING_WINDOW = 150
 CONFIDENCE_THRESHOLD = 0.6
-CLASS_NAMES = {
-    0: "Car",
-    1: "Green Light",
-    2: "Person",
-    3: "zebra crossing"
+
+# YOLOv8m standard COCO class names (we use cars, people, etc.)
+# Full COCO classes: https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco.yaml
+YOLO_CLASS_NAMES = {
+    0: "Person",
+    1: "Bicycle",
+    2: "Car",
+    3: "Motorcycle",
+    5: "Bus",
+    7: "Truck",
+    # Add more as needed, but we exclude class 9 (traffic light) in video_processor
 }
-VEHICLE_CLASSES = ["Car"]
-TRAFFIC_LIGHTS = ["Green Light"]
+
+# Traffic Lights Model - Classes 2, 3, 4 correspond to light colors
+TRAFFIC_LIGHT_CLASS_NAMES = {
+    2: "Green Light",
+    3: "Red Light",
+    4: "Yellow Light"
+}
+
+# Zebra Crossing Model - Class 8 is zebra crossing
+ZEBRA_CLASS_NAMES = {
+    8: "Zebra Crossing"
+}
+
+# Categories for detection logic
+VEHICLE_CLASSES = ["Car", "Bus", "Truck", "Motorcycle", "Bicycle"]
+TRAFFIC_LIGHTS = ["Green Light", "Red Light", "Yellow Light"]
+ZEBRA_CROSSING = ["Zebra Crossing"]
 
 # ================================================================
 # HELPER FUNCTIONS (Copied from Context 2)
@@ -89,8 +110,18 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
                 continue
             if not should_announce(key, frame_count, detection_state):
                 continue
+            
+            # Handle different traffic light colors
             if "Green Light" in det['label']:
                 msg = "Green light ahead. It's safe to cross."
+                messages.append(msg)
+                priority_scores.append(9)
+            elif "Red Light" in det['label']:
+                msg = "Red light ahead. Stop and wait."
+                messages.append(msg)
+                priority_scores.append(10)  # Red light is highest priority
+            elif "Yellow Light" in det['label']:
+                msg = "Yellow light ahead. Prepare to stop."
                 messages.append(msg)
                 priority_scores.append(9)
     
@@ -98,7 +129,8 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
     zebra_detected = False
     zebra_key = None
     for key, dets in grouped_detections.items():
-        if "zebra crossing" in key.lower():
+        label = dets[0]['label']
+        if label in ZEBRA_CROSSING:
             if dets[0]['conf'] >= CONFIDENCE_THRESHOLD:
                 zebra_detected = True
                 zebra_key = key

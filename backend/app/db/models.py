@@ -20,5 +20,6 @@ class DetectionHistory(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     results = Column(JSON, nullable=False)  # Stores the list of text strings
+    audio_path = Column(String, nullable=True)  # Path to generated audio file
 
     owner = relationship("User", back_populates="history_items")
