@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     MODEL_PATH_ZEBRA_CROSSING: str = "models/zebra crossing.pt"
     Backend_PORT: str = "http://localhost:8000"
     Backend_PORT_FALLBACK: str = "http://0.0.0.0:8000"
+    # Storage paths for history files
+    HISTORY_STORAGE_DIR: str = "storage/history"
+    TEMP_UPLOAD_DIR: str = "tmp/"
 
     class Config:
         env_file = ".env"

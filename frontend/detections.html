@@ -67,16 +67,19 @@
       display: flex;
       gap: 32px;
       width: 100%;
-      max-width: 870px;
+        max-width: 100%;
       justify-content: center;
       padding-top: 8px;
       padding-bottom: 8px;
+        flex-wrap: wrap;
     }
     .panel {
       background: #fff;
       border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.13);
-      flex: 1 1 0px;
+        flex: 1 1 280px;
+        min-width: 280px;
+        max-width: 400px;
       display: flex;
       flex-direction: column;
       align-items: stretch;
@@ -107,14 +110,47 @@
     }
     .panel-content {
       flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       color: #485e13;
       font-size: 1.09rem;
       background: none;
       min-height: 220px;
       padding-top: 6px;
+      overflow-y: auto;
+      max-height: 500px;
+    }
+    .panel-content:empty,
+    .panel-content p {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 220px;
+    }
+    .history-item {
+      background: #f5f5f5;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 6px;
+      text-align: left;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .history-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+    .history-btn {
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: opacity 0.2s;
+    }
+    .history-btn:hover {
+      opacity: 0.85;
+    }
+    .history-btn:active {
+      transform: scale(0.98);
     }
     @media (max-width: 900px) {
       .detections-panels { flex-direction: column; gap: 22px; }
@@ -143,22 +179,36 @@
       <!-- Video Files Division -->
       <div class="panel">
         <div class="panel-title">Video Files</div>
-        <input class="search-bar" type="text" placeholder="Search video..." />
-        <div class="panel-content">
-          No video files uploaded yet.
+        <input class="search-bar" id="videoSearch" type="text" placeholder="Search video..." />
+        <div class="panel-content" id="videoList">
+          <p>Loading video files...</p>
         </div>
       </div>
+        <!-- Image Files Division -->
+        <div class="panel">
+          <div class="panel-title">Image Files</div>
+          <input class="search-bar" id="imageSearch" type="text" placeholder="Search image..." />
+          <div class="panel-content" id="imageList">
+            <p>Loading image files...</p>
+          </div>
+        </div>
       <!-- Audio Output Division -->
       <div class="panel">
         <div class="panel-title">Audio Output</div>
-        <input class="search-bar" type="text" placeholder="Search audio..." />
-        <div class="panel-content">
-          No audio output files available yet.
+        <input class="search-bar" id="audioSearch" type="text" placeholder="Search audio..." />
+        <div class="panel-content" id="audioList">
+          <p>Loading audio files...</p>
         </div>
       </div>
     </div>
   </div>
+  <script src="config.js"></script>
   <script>
+    // Get user ID from localStorage (set during login)
+    const userId = localStorage.getItem('userId');
+    let historyData = [];
+    let API_BASE_URL = '';
+
     function speak(text, cb) {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1;
@@ -167,6 +217,166 @@
       utterance.onend = () => cb && cb();
       speechSynthesis.speak(utterance);
     }
+
+    function formatDateTime(timestamp) {
+      const date = new Date(timestamp);
+      const dateStr = date.toLocaleDateString();
+      const timeStr = date.toLocaleTimeString();
+      return `${dateStr} ${timeStr}`;
+    }
+
+    async function loadHistory() {
+      if (!userId) {
+        document.getElementById('videoList').innerHTML = '<p style="color: #d32f2f;">Please log in first.</p>';
+        document.getElementById('audioList').innerHTML = '<p style="color: #d32f2f;">Please log in first.</p>';
+        return;
+      }
+
+      try {
+        // Get backend URL from config
+        API_BASE_URL = await window.BackendAPI.getUrl();
+        
+        const response = await fetch(`${API_BASE_URL}/history/${userId}`);
+        if (!response.ok) throw new Error('Failed to fetch history');
+        
+        historyData = await response.json();
+        displayHistory(historyData);
+      } catch (error) {
+        console.error('Error loading history:', error);
+        document.getElementById('videoList').innerHTML = '<p style="color: #d32f2f;">Failed to load video files.</p>';
+          document.getElementById('imageList').innerHTML = '<p style="color: #d32f2f;">Failed to load image files.</p>';
+        document.getElementById('audioList').innerHTML = '<p style="color: #d32f2f;">Failed to load audio files.</p>';
+      }
+    }
+
+    function displayHistory(data) {
+      const videoList = document.getElementById('videoList');
+        const imageList = document.getElementById('imageList');
+      const audioList = document.getElementById('audioList');
+
+      if (data.length === 0) {
+        videoList.innerHTML = '<p>No video files uploaded yet.</p>';
+          imageList.innerHTML = '<p>No image files uploaded yet.</p>';
+        audioList.innerHTML = '<p>No audio output files available yet.</p>';
+        return;
+      }
+
+      // Display videos
+      const videoHTML = data.filter(item => item.video_path).map(item => `
+        <div style="background: #f5f5f5; padding: 12px; margin: 8px 0; border-radius: 6px; text-align: left; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="color: #333; font-weight: bold; margin-bottom: 4px;">Detection #${item.id}</div>
+          <div style="color: #666; font-size: 0.9rem; margin-bottom: 8px;">${formatDateTime(item.timestamp)}</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button onclick="viewVideo(${item.id})" style="background: #2196f3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+              <i class="fa-solid fa-play"></i> View Video
+            </button>
+            <button onclick="downloadVideo(${item.id})" style="background: #4caf50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+              <i class="fa-solid fa-download"></i> Download
+            </button>
+          </div>
+        </div>
+      `).join('');
+      videoList.innerHTML = videoHTML || '<p>No video files uploaded yet.</p>';
+
+        // Display images
+        const imageHTML = data.filter(item => item.image_path).map(item => `
+          <div style="background: #f5f5f5; padding: 12px; margin: 8px 0; border-radius: 6px; text-align: left; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="color: #333; font-weight: bold; margin-bottom: 4px;">Detection #${item.id}</div>
+            <div style="color: #666; font-size: 0.9rem; margin-bottom: 8px;">${formatDateTime(item.timestamp)}</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button onclick="viewImage(${item.id})" style="background: #9c27b0; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                <i class="fa-solid fa-image"></i> View Image
+              </button>
+              <button onclick="downloadImage(${item.id})" style="background: #4caf50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                <i class="fa-solid fa-download"></i> Download
+              </button>
+            </div>
+          </div>
+        `).join('');
+        imageList.innerHTML = imageHTML || '<p>No image files uploaded yet.</p>';
+
+      // Display audio files
+      const audioHTML = data.filter(item => item.audio_path).map(item => `
+        <div style="background: #f5f5f5; padding: 12px; margin: 8px 0; border-radius: 6px; text-align: left; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="color: #333; font-weight: bold; margin-bottom: 4px;">Detection #${item.id}</div>
+          <div style="color: #666; font-size: 0.9rem; margin-bottom: 8px;">${formatDateTime(item.timestamp)}</div>
+          <div style="color: #555; font-size: 0.85rem; margin-bottom: 8px; max-height: 60px; overflow-y: auto;">
+            ${item.results.slice(0, 3).join(', ')}${item.results.length > 3 ? '...' : ''}
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button onclick="playAudio(${item.id})" style="background: #ff9800; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+              <i class="fa-solid fa-volume-up"></i> Play Audio
+            </button>
+            <button onclick="downloadAudio(${item.id})" style="background: #4caf50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+              <i class="fa-solid fa-download"></i> Download
+            </button>
+          </div>
+        </div>
+      `).join('');
+      audioList.innerHTML = audioHTML || '<p>No audio output files available yet.</p>';
+    }
+
+    function viewVideo(detectionId) {
+      window.open(`${API_BASE_URL}/history/video/${detectionId}`, '_blank');
+    }
+
+    function downloadVideo(detectionId) {
+      window.location.href = `${API_BASE_URL}/history/video/${detectionId}`;
+    }
+
+      function viewImage(detectionId) {
+        window.open(`${API_BASE_URL}/history/image/${detectionId}`, '_blank');
+      }
+
+      function downloadImage(detectionId) {
+        window.location.href = `${API_BASE_URL}/history/image/${detectionId}`;
+      }
+
+    function playAudio(detectionId) {
+      const audio = new Audio(`${API_BASE_URL}/history/audio/${detectionId}`);
+      audio.play();
+    }
+
+    function downloadAudio(detectionId) {
+      window.location.href = `${API_BASE_URL}/history/audio/${detectionId}`;
+    }
+
+    // Search functionality
+    document.getElementById('videoSearch').addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      const filtered = historyData.filter(item => 
+        item.video_path && (
+          item.id.toString().includes(searchTerm) ||
+          formatDateTime(item.timestamp).toLowerCase().includes(searchTerm)
+        )
+      );
+      displayHistory(filtered);
+    });
+
+      document.getElementById('imageSearch').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filtered = historyData.filter(item => 
+          item.image_path && (
+            item.id.toString().includes(searchTerm) ||
+            formatDateTime(item.timestamp).toLowerCase().includes(searchTerm) ||
+            item.results.some(r => r.toLowerCase().includes(searchTerm))
+          )
+        );
+        displayHistory(filtered);
+      });
+
+    document.getElementById('audioSearch').addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      const filtered = historyData.filter(item => 
+        item.audio_path && (
+          item.id.toString().includes(searchTerm) ||
+          formatDateTime(item.timestamp).toLowerCase().includes(searchTerm) ||
+          item.results.some(r => r.toLowerCase().includes(searchTerm))
+        )
+      );
+      displayHistory(filtered);
+    });
+
     function runSpeechGuide() {
       let intro = "This is My Detections. Here you will have your audio and video files that are detected when you have uploaded them.";
       let outro = "Say 'Go back' to go to homepage.";
@@ -174,6 +384,7 @@
         speak(outro, startListening);
       });
     }
+    
     function startListening() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) { return; }
@@ -185,14 +396,16 @@
       recognition.onresult = (event) => {
         const command = event.results[0][0].transcript.toLowerCase();
         if (command.includes("go back")) {
-          window.location.href = "homepage.html"; // Change this to your homepage filename
+          window.location.href = "homepage.html";
         }
-        // If not "go back", do nothing. No error speech.
       };
       recognition.onerror = () => {
         // Do nothing if error, do not speak
       };
     }
+
+    // Load history when page loads
+    window.addEventListener('DOMContentLoaded', loadHistory);
   </script>
 </body>
 </html>

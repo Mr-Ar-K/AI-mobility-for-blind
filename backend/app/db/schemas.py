@@ -13,6 +13,11 @@ class HistoryItemCreate(HistoryItemBase):
 class HistoryItem(HistoryItemBase):
     id: int
     timestamp: datetime
+    video_path: Optional[str] = None
+    image_path: Optional[str] = None
+    audio_path: Optional[str] = None
+    media_type: str = "video"
+    user_id: int
 
     class Config:
         from_attributes = True

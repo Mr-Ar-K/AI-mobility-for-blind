@@ -51,6 +51,13 @@ backend/.env.*.local
 # Temporary files
 backend/tmp/*
 !backend/tmp/.gitkeep
+tmp/
+tmp/*
+
+# History storage (user data - videos and audio files)
+storage/
+storage/history/
+storage/history/*
 
 # Video files
 *.mp4
@@ -60,6 +67,20 @@ backend/tmp/*
 *.flv
 *.wmv
 *.webm
+
+# Audio files (generated)
+*.mp3
+*.wav
+*.ogg
+
+# Image files (uploaded and detected)
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.webp
+*.gif
+*.tiff
 
 # Logs
 *.log
