@@ -112,35 +112,7 @@ psql -U postgres -c "CREATE DATABASE ai_mobility_db;"
 sudo -u postgres psql -c "CREATE DATABASE ai_mobility_db;"
 ```
 
-#### Initialize Database Tables
-
-The database initialization script will create all required tables (users, detection_history) with proper indexes:
-
-```powershell
-cd backend
-python init_database.py
-```
-
-This script will:
-- ✅ Verify PostgreSQL connection
-- ✅ Create the `ai_mobility_db` database if it doesn't exist
-- ✅ Create `users` table (id, username, email, password)
-- ✅ Create `detection_history` table (id, user_id, timestamp, results, file paths)
-- ✅ Add indexes for performance (username, email, user_id)
-- ✅ Set up foreign key relationships
-- ✅ Display detailed schema information
-
-**Expected Output:**
-```
-🚀 AI Mobility Database Initialization
-✅ Successfully connected to PostgreSQL!
-✅ Database 'ai_mobility_db' already exists.
-📊 Creating database tables...
-✅ All tables created successfully!
-✅ Database initialization successful!
-```
-
-### 4) Configure Backend Settings
+### 3) Configure Backend Settings
 
 Create or edit `backend/.env` file:
 
@@ -166,7 +138,7 @@ TEMP_UPLOAD_DIR=tmp/
 - Replace `YOUR_PASSWORD` with your PostgreSQL password
 - Ensure all three YOLO model files exist in the `backend/models/` directory
 
-### 5) Start the Backend Server (FastAPI)
+### 4) Start the Backend Server (FastAPI)
 
 ```powershell
 cd backend
@@ -181,7 +153,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ✅ Backend running at: http://localhost:8000  
 📖 API documentation: http://localhost:8000/docs
 
-### 6) Start the Frontend Server
+### 5) Start the Frontend Server
 
 Open a **NEW terminal** (keep backend running), activate the environment again:
 
