@@ -7,17 +7,17 @@
 (function() {
 	// Pages that do NOT require authentication
 	const publicPages = ['/index.html', '/login.html', '/register.html'];
-    
-	const token = localStorage.getItem('token');
 	const currentPage = window.location.pathname;
 
-	if (!token && !publicPages.includes(currentPage)) {
-		// User is not logged in and is trying to access a protected page
-		console.log('No token found, redirecting to login.');
+	const hasToken = !!localStorage.getItem('token');
+	const hasUser = !!localStorage.getItem('user');
+	const isPublic = publicPages.includes(currentPage);
+
+	if (!(hasToken || hasUser) && !isPublic) {
+		console.log('No session found, redirecting to login.');
 		window.location.href = 'login.html';
-	} else if (token && (currentPage === '/login.html' || currentPage === '/register.html')) {
-		// User is logged in but is trying to access login/register page
-		console.log('Token found, redirecting to home.');
+	} else if ((hasToken || hasUser) && (currentPage === '/login.html' || currentPage === '/register.html')) {
+		console.log('Session found, redirecting to home.');
 		window.location.href = 'home.html';
 	}
 })();

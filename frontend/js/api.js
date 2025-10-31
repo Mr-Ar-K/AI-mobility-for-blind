@@ -41,11 +41,11 @@ async function fetchWithFallback(path, options) {
 }
 
 /**
- * Gets the authentication token from browser's local storage.
- * @returns {string | null} The stored token, or null if not found.
+ * Gets the stored user object from local storage.
+ * @returns {object | null} The stored user or null.
  */
-function getToken() {
-	return localStorage.getItem('token');
+function getUser() {
+	try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
 }
 
 /**
@@ -53,6 +53,7 @@ function getToken() {
  */
 function handleLogout() {
 	localStorage.removeItem('token');
+	localStorage.removeItem('user');
 	window.location.href = 'login.html';
 }
 
@@ -64,15 +65,8 @@ function handleLogout() {
  * @returns {Promise<any>} - The JSON response from the server.
  */
 async function fetchWithAuth(endpoint, options = {}) {
-	const token = getToken();
-
 	// Create new Headers object or use existing one
 	const headers = new Headers(options.headers || {});
-    
-	// Add the Authorization header
-	if (token) {
-		headers.append('Authorization', `Bearer ${token}`);
-	}
 
 	// Don't set Content-Type for FormData; browser does it automatically
 	// with the correct boundary.
@@ -115,23 +109,20 @@ async function fetchWithAuth(endpoint, options = {}) {
 }
 
 /**
- * Logs in the user.
- * @param {string} email - The user's email.
+ * Logs in the user (backend: /users/login returns user object).
+ * @param {string} emailOrUsername - Email or username (we map to username for backend).
  * @param {string} password - The user's password.
- * @returns {Promise<object>} The response data, including the access_token.
+ * @returns {Promise<object>} The user object.
  */
-async function login(email, password) {
-	// Your FastAPI /token endpoint expects "x-www-form-urlencoded" data
-	const formData = new URLSearchParams();
-	formData.append('username', email);
-	formData.append('password', password);
-
-	const response = await fetch(`${API_URL}/token`, {
+async function login(emailOrUsername, password) {
+	const payload = {
+		username: emailOrUsername,
+		password: password,
+	};
+	const response = await fetchWithFallback('/users/login', {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		body: formData,
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload),
 	});
 
 	if (!response.ok) {
@@ -139,77 +130,95 @@ async function login(email, password) {
 		throw new Error(errorData.detail || 'Login failed. Please check credentials.');
 	}
     
-	return response.json();
+	const user = await response.json();
+	// Persist user for subsequent calls
+	localStorage.setItem('user', JSON.stringify(user));
+	return user;
 }
 
 /**
  * Registers a new user.
- * @param {string} firstName - The user's first name.
+ * @param {string} firstName - The user's first name (mapped to username).
  * @param {string} email - The user's email.
  * @param {string} password - The user's password.
  * @returns {Promise<object>} The new user object.
  */
 async function register(firstName, email, password) {
-	// Your /users/ endpoint expects JSON
-	return fetchWithAuth('/users/', {
+	// Backend expects username, email, password at /users/signup
+	return fetchWithFallback('/users/signup', {
 		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({
-			first_name: firstName,
+			username: firstName,
 			email: email,
 			password: password,
 		}),
-	});
+	}).then(r => r.json());
 }
 
 /**
- * Fetches the currently logged-in user's details.
+ * Fetches the current user (from local storage or backend by id).
  * @returns {Promise<object>} The user object.
  */
 async function getCurrentUser() {
-	return fetchWithAuth('/users/me', {
-		method: 'GET',
-	});
+	const user = getUser();
+	if (!user) throw new Error('Not logged in');
+	// Optionally refresh from backend
+	const res = await fetchWithFallback(`/users/${user.id}`, { method: 'GET' });
+	if (res.ok) {
+		const fresh = await res.json();
+		localStorage.setItem('user', JSON.stringify(fresh));
+		return fresh;
+	}
+	return user;
 }
 
 /**
- * Updates the currently logged-in user's profile.
- * @param {string} firstName - The new first name.
- * @param {string} email - The new email.
- * @returns {Promise<object>} The updated user object.
+ * Updates the current user's profile.
+ * @param {string} firstName - New first name (mapped to username).
+ * @param {string} email - New email.
+ * @returns {Promise<object>} Updated user.
  */
 async function updateUser(firstName, email) {
-	return fetchWithAuth('/users/me', {
+	const user = getUser();
+	if (!user) throw new Error('Not logged in');
+	const res = await fetchWithFallback(`/users/${user.id}`, {
 		method: 'PUT',
-		body: JSON.stringify({
-			first_name: firstName,
-			email: email,
-		}),
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ username: firstName, email })
 	});
+	if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || 'Update failed');
+	const updated = await res.json();
+	localStorage.setItem('user', JSON.stringify(updated));
+	return updated;
 }
 
 /**
- * Uploads a video file for detection.
+ * Uploads a video file for detection for current user.
  * @param {File} file - The video file to upload.
- * @returns {Promise<object>} The detection results.
+ * @returns {Promise<object>} The detection results including audio_url.
  */
 async function uploadVideo(file) {
 	const formData = new FormData();
 	formData.append('file', file); // 'file' must match the name in your FastAPI endpoint
-
-	// fetchWithAuth will handle the token and headers
-	return fetchWithAuth('/detection/', {
+	const user = getUser();
+	if (!user) throw new Error('Not logged in');
+	const res = await fetchWithFallback(`/detect/${user.id}/with-audio`, {
 		method: 'POST',
 		body: formData,
-		// Do NOT set Content-Type header here
 	});
+	if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || 'Upload failed');
+	return res.json();
 }
 
 /**
- * Fetches the user's detection history.
+ * Fetches the current user's detection history.
  * @returns {Promise<Array<object>>} A list of detection history items.
  */
 async function getHistory() {
-	return fetchWithAuth('/history/', {
-		method: 'GET',
-	});
+	const user = getUser();
+	if (!user) throw new Error('Not logged in');
+	const res = await fetchWithFallback(`/history/${user.id}`, { method: 'GET' });
+	if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || 'Failed to fetch history');
+	return res.json();
 }

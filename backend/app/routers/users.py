@@ -47,3 +47,37 @@ def login_user(form_data: schemas.UserLogin, db: Session = Depends(database.get_
         )
     
     return user
+
+@router.get("/{user_id}", response_model=schemas.User)
+def get_user(user_id: int, db: Session = Depends(database.get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+class UserUpdate(schemas.UserBase):
+    pass
+
+@router.put("/{user_id}", response_model=schemas.User)
+def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(database.get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Enforce unique email and username constraints
+    if payload.username and payload.username != user.username:
+        exists_u = db.query(models.User).filter(models.User.username == payload.username).first()
+        if exists_u:
+            raise HTTPException(status_code=400, detail="Username already registered")
+        user.username = payload.username
+
+    if payload.email and payload.email != user.email:
+        exists_e = db.query(models.User).filter(models.User.email == payload.email).first()
+        if exists_e:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        user.email = payload.email
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user

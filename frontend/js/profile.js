@@ -7,9 +7,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	// 1. Load current user data into the form
 	try {
-		const user = await getCurrentUser(); // from api.js
-		firstNameInput.value = user.first_name;
-		emailInput.value = user.email;
+	const user = await getCurrentUser(); // from api.js
+	firstNameInput.value = user.username;
+	emailInput.value = user.email;
 	} catch (error) {
 		messageText.textContent = `Failed to load profile: ${error.message}`;
 		messageText.className = 'error-text';
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 			// Also update the initials in the navbar
 			const userInitialsSpan = document.getElementById('user-initials');
 			if (userInitialsSpan) {
-				userInitialsSpan.textContent = updatedUser.first_name.charAt(0).toUpperCase();
+				userInitialsSpan.textContent = (updatedUser.username || '').charAt(0).toUpperCase();
 			}
 
 		} catch (error) {

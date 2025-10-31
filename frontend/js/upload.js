@@ -31,12 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
 			resultsContainer.appendChild(detectionsTitle);
             
 			const detectionList = document.createElement('ul');
-			if (Object.keys(data.detections).length === 0) {
+			const items = (data.text_results && Array.isArray(data.text_results)) ? data.text_results : [];
+			if (!items.length) {
 				detectionList.innerHTML = '<li>No objects detected.</li>';
 			} else {
-				for (const [object, count] of Object.entries(data.detections)) {
+				for (const t of items) {
 					const item = document.createElement('li');
-					item.textContent = `${object}: ${count}`;
+					item.textContent = t;
 					detectionList.appendChild(item);
 				}
 			}

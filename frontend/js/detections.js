@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 			card.appendChild(title);
 
 			// Detections Text
-			const objects = Object.keys(item.detections).join(', ') || 'No objects detected';
+			const objects = (item.results && item.results.length) ? item.results.join(', ') : 'No objects detected';
 			const detectionsText = document.createElement('p');
 			detectionsText.textContent = `Objects found: ${objects}`;
 			card.appendChild(detectionsText);
@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 			// Audio Player
 			const audioPlayer = document.createElement('audio');
 			audioPlayer.controls = true;
-			audioPlayer.src = `${API_URL}${item.audio_url}`;
+			// Backend serves audio at /history/audio/{id}
+			audioPlayer.src = `${API_URL}/history/audio/${item.id}`;
 			card.appendChild(audioPlayer);
 
 			// Add the new card to the grid

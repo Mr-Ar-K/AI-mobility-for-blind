@@ -18,11 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
 			const email = emailInput.value;
 			const password = passwordInput.value;
 
-			// Call the login function from api.js
-			const data = await login(email, password);
-
-			// Save the token
-			localStorage.setItem('token', data.access_token);
+			// Call the login function from api.js (stores user in localStorage)
+			await login(email, password);
 
 			// Redirect to the home page
 			window.location.href = 'home.html';

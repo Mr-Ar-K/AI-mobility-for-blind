@@ -14,9 +14,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	try {
 		// Fetch user data to populate navbar
-		const user = await getCurrentUser(); // from api.js
+	const user = await getCurrentUser(); // returns backend user
         
-		const firstName = user.first_name || 'User';
+	const firstName = user.username || 'User';
 		const initials = firstName.charAt(0).toUpperCase();
 
 		if (userInitialsSpan) {

@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		errorMessage.textContent = '';
 
 		try {
-			const firstName = firstNameInput.value;
+			const firstName = firstNameInput.value; // mapped to username on backend
 			const email = emailInput.value;
 			const password = passwordInput.value;
 
