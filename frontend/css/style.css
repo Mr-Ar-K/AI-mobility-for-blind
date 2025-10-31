@@ -1,0 +1,423 @@
+/* === CSS RESET & GLOBAL STYLES === */
+/* Based on Object-Detecto's index.css */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+  --radius: 0.5rem;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  line-height: 1.5;
+}
+
+/* === REUSABLE LAYOUT CLASSES === */
+
+/* A full-page container used for login/register */
+.page-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box; 
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+/* A centered box for forms (like a Card) */
+.content-box {
+  width: 100%;
+  max-width: 420px;
+  padding: 2rem;
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-sizing: border-box;
+}
+
+/* A main container for pages with a navbar */
+.page-main-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* === REUSABLE COMPONENT CLASSES === */
+
+.page-title {
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 700; /* font-bold */
+  text-align: center;
+  margin: 0 0 1rem 0;
+  color: hsl(var(--foreground));
+}
+
+.page-subtitle {
+  text-align: center;
+  font-size: 0.875rem; /* text-sm */
+  color: hsl(var(--muted-foreground));
+  margin: -1rem 0 1.5rem 0;
+}
+
+/* Form Styles */
+.form-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-footer-text {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.form-footer-text a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.form-footer-text a:hover {
+  text-decoration: underline;
+}
+
+/* Label Styles */
+label {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+/* Input Field Styles */
+.input-field {
+  width: 100%;
+  height: 40px;
+  padding: 0.5rem 0.75rem;
+  box-sizing: border-box;
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 2px);
+  background-color: hsl(var(--background));
+  font-size: 0.875rem;
+}
+.input-field:focus {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+.input-field:disabled {
+  cursor: not-allowed;
+  background-color: hsl(var(--muted) / 0.5);
+  color: hsl(var(--muted-foreground));
+}
+
+/* Textarea Styles */
+.textarea-field {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.5rem 0.75rem;
+  box-sizing: border-box;
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 2px);
+  background-color: hsl(var(--background));
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+.textarea-field:focus {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 1px;
+}
+
+/* Button Styles */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: calc(var(--radius) - 2px);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.button-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.button-primary:hover {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+.button-full-width {
+  width: 100%;
+}
+
+/* Error message text */
+.error-text {
+  color: hsl(var(--destructive));
+  font-size: 0.875rem;
+  min-height: 1.25rem;
+  text-align: center;
+}
+
+/* === NAVIGATION BAR === */
+/* Styles for the reusable navbar */
+.navbar-container {
+  width: 100%;
+  border-bottom: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.navbar {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.navbar-brand {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+
+.navbar-links {
+  display: none; /* Hidden on mobile */
+  gap: 1.5rem;
+}
+
+/* Show links on screens wider than 768px */
+@media (min-width: 768px) {
+  .navbar-links {
+    display: flex;
+  }
+}
+
+.nav-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.nav-link:hover {
+  color: hsl(var(--foreground));
+}
+
+.navbar-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nav-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+  border: 1px solid hsl(var(--border));
+}
+
+.button-logout {
+  background: none;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  border-radius: calc(var(--radius) - 2px);
+}
+.button-logout:hover {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive) / 0.5);
+}
+
+
+/* === PAGE-SPECIFIC STYLES === */
+/* We will add more styles here as we go */
+
+/* === STYLES FOR index.html === */
+.welcome-container {
+  gap: 1rem;
+}
+.welcome-title {
+  font-size: 3rem; /* text-5xl */
+  font-weight: 800; /* font-extrabold */
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: hsl(var(--primary));
+  margin: 0;
+}
+.welcome-subtitle {
+  font-size: 1.25rem; /* text-xl */
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+  margin: 0;
+  max-width: 500px;
+}
+.welcome-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+/* A new button style for the register link */
+.button-secondary {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+.button-secondary:hover {
+  background-color: hsl(var(--secondary) / 0.8);
+}
+
+/* === STYLES FOR home.html === */
+.home-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+.home-title {
+  font-size: 2.25rem; /* text-4xl */
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+}
+.home-subtitle {
+  font-size: 1.25rem; /* text-xl */
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 768px) {
+  .home-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.card-link {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+.card-link:hover {
+  box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+  border-color: hsl(var(--primary) / 0.5);
+}
+.card-link h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+.card-link p {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
+/* === STYLES FOR upload.html === */
+.results-container {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px dashed hsl(var(--border));
+  border-radius: var(--radius);
+  min-height: 100px;
+  background-color: hsl(var(--background));
+}
+.results-container p {
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+.results-container ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+.results-container li {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+.results-container audio {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+/* === STYLES FOR detections.html === */
+.detections-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .detections-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.detection-item {
+  /* Reuses .card-link style, just adds audio player style */
+  cursor: default;
+}
+.detection-item:hover {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  border-color: hsl(var(--border));
+}
+.detection-item h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.detection-item p {
+  font-size: 0.9rem;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1rem;
+}
+.detection-item audio {
+  width: 100%;
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>About - AI Mobility</title>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+	<header class="navbar-container">
+		<nav class="navbar">
+			<a href="home.html" class="navbar-brand">Object Detecto</a>
+			<div class="navbar-links">
+				<a href="home.html" class="nav-link">Home</a>
+				<a href="upload.html" class="nav-link">Upload</a>
+				<a href="detections.html" class="nav-link">Detections</a>
+				<a href="about.html" class="nav-link">About</a>
+			</div>
+			<div class="navbar-profile">
+				<a href="profile.html" class="nav-avatar">
+					<span id="user-initials">...</span>
+				</a>
+				<button id="logout-button" class="button-logout">Logout</button>
+			</div>
+		</nav>
+	</header>
+
+	<main class="page-main-content">
+		<h1 class="page-title">About This Application</h1>
+		<div class="content-box" style="max-width: 800px; margin: 0 auto;">
+			<p>This application is a proof-of-concept for AI-powered object detection designed to assist visually impaired users.</p>
+			<p>It combines a powerful Python backend using FastAPI and YOLO models with a clear, accessible frontend to provide real-time audio feedback about objects detected in an uploaded video stream.</p>
+			<h3>How It Works</h3>
+			<ol>
+				<li><strong>Upload:</strong> A user uploads a video file from their device.</li>
+				<li><strong>Process:</strong> The backend server receives the video, processes it frame by frame using advanced YOLO object detection models.</li>
+				<li><strong>Summarize:</strong> The system identifies all unique objects and their counts (e.g., "2 people", "1 car", "3 traffic lights").</li>
+				<li><strong>Speak:</strong> The summary is converted into a natural-sounding audio description using a Text-to-Speech (TTS) engine.</li>
+				<li><strong>Result:</strong> The user receives both the text summary and an audio file they can play to understand their surroundings.</li>
+			</ol>
+		</div>
+	</main>
+    
+	<script src="js/auth.js"></script>
+	<script src="js/api.js"></script>
+	<script src="js/home.js"></script> </body>
+</html>

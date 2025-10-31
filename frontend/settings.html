@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Settings - AI Mobility</title>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+	<header class="navbar-container">
+		<nav class="navbar">
+			<a href="home.html" class="navbar-brand">Object Detecto</a>
+			<div class="navbar-links">
+				<a href="home.html" class="nav-link">Home</a>
+				<a href="upload.html" class="nav-link">Upload</a>
+				<a href="detections.html" class="nav-link">Detections</a>
+				<a href="about.html" class="nav-link">About</a>
+			</div>
+			<div class="navbar-profile">
+				<a href="profile.html" class="nav-avatar">
+					<span id="user-initials">...</span>
+				</a>
+				<button id="logout-button" class="button-logout">Logout</button>
+			</div>
+		</nav>
+	</header>
+
+	<main class="page-main-content">
+		<h1 class="page-title">Settings</h1>
+		<div class="content-box" style="max-width: 700px; margin: 0 auto;">
+			<form id="settings-form" class="form-layout">
+				<div class="form-group">
+					<label for="language-select">Language</label>
+					<select id="language-select" class="input-field">
+						<option value="en">English</option>
+						</select>
+				</div>
+                
+				<div id="message-text" class="error-text"></div>
+
+				<button id="save-settings-button" type="submit" class="button button-primary">
+					Save Settings
+				</button>
+			</form>
+		</div>
+	</main>
+    
+	<script src="js/auth.js"></script>
+	<script src="js/api.js"></script>
+	<script src="js/home.js"></script> </body>
+</html>

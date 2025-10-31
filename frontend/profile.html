@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Profile - AI Mobility</title>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+	<header class="navbar-container">
+		<nav class="navbar">
+			<a href="home.html" class="navbar-brand">Object Detecto</a>
+			<div class="navbar-links">
+				<a href="home.html" class="nav-link">Home</a>
+				<a href="upload.html" class="nav-link">Upload</a>
+				<a href="detections.html" class="nav-link">Detections</a>
+				<a href="about.html" class="nav-link">About</a>
+			</div>
+			<div class="navbar-profile">
+				<a href="profile.html" class="nav-avatar">
+					<span id="user-initials">...</span>
+				</a>
+				<button id="logout-button" class="button-logout">Logout</button>
+			</div>
+		</nav>
+	</header>
+
+	<main class="page-main-content">
+		<h1 class="page-title">My Profile</h1>
+		<div class="content-box" style="max-width: 600px; margin: 0 auto;">
+			<form id="profile-form" class="form-layout">
+				<div class="form-group">
+					<label for="first-name">First Name</label>
+					<input id="first-name" type="text" required class="input-field">
+				</div>
+				<div class="form-group">
+					<label for="email">Email</label>
+					<input id="email" type="email" required class="input-field" disabled>
+				</div>
+                
+				<div id="message-text" class="error-text">
+					</div>
+
+				<button id="update-profile-button" type="submit" class="button button-primary">
+					Update Profile
+				</button>
+			</form>
+		</div>
+	</main>
+    
+	<script src="js/auth.js"></script>
+	<script src="js/api.js"></script>
+	<script src="js/profile.js"></script>
+</body>
+</html>
