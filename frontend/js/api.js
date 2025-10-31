@@ -1,6 +1,44 @@
-// This is your backend server's URL.
-// Make sure your Python server is running on this address and port.
-const API_URL = "http://127.0.0.1:8000";
+// Backend base URLs with automatic fallback.
+// Primary: DevTunnels (HTTPS). Fallbacks: localhost variants.
+const API_BASES = [
+	"https://cjcf4dl2-8000.inc1.devtunnels.ms",
+	"http://127.0.0.1:8000",
+	"http://0.0.0.0:8000" // note: many browsers cannot reach 0.0.0.0; kept per request
+];
+
+// Current base URL used by the API client; updated on successful call.
+let API_URL = API_BASES[0];
+
+/**
+ * Resolve the first reachable API base by attempting the provided request.
+ * Falls back through API_BASES on network errors. On success, updates API_URL.
+ * @param {RequestInfo} path - endpoint path like '/users/me'
+ * @param {RequestInit} options - fetch options
+ * @returns {Promise<Response>} response
+ */
+async function fetchWithFallback(path, options) {
+	let lastError = null;
+	// try current API_URL first, then others
+	const tried = new Set();
+	const candidates = [API_URL, ...API_BASES.filter(b => b !== API_URL)];
+
+	for (const base of candidates) {
+		tried.add(base);
+		try {
+			const res = await fetch(`${base}${path}`, options);
+			// If we get any HTTP response, consider the base reachable
+			API_URL = base;
+			return res;
+		} catch (e) {
+			lastError = e;
+			// network error -> try next base
+			continue;
+		}
+	}
+	// If all failed due to network errors
+	if (lastError) throw lastError;
+	throw new Error('All API bases failed');
+}
 
 /**
  * Gets the authentication token from browser's local storage.
@@ -47,7 +85,7 @@ async function fetchWithAuth(endpoint, options = {}) {
 	options.headers = headers;
 
 	try {
-		const response = await fetch(`${API_URL}${endpoint}`, options);
+		const response = await fetchWithFallback(endpoint, options);
 
 		// If the token is bad (e.g., expired), log the user out.
 		if (response.status === 401) {
@@ -68,7 +106,7 @@ async function fetchWithAuth(endpoint, options = {}) {
 			return null;
 		}
 
-		return response.json();
+	return response.json();
 
 	} catch (error) {
 		console.error('API call failed:', error.message);
