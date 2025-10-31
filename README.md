@@ -63,12 +63,89 @@ py -3.10 -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 3) Configure Backend Settings
+### 3) Set Up PostgreSQL Database
+
+#### Install PostgreSQL (if not already installed)
+
+**Windows:**
+1. Download PostgreSQL from https://www.postgresql.org/download/windows/
+2. Run the installer and remember the password you set for the `postgres` user
+3. Add PostgreSQL's `bin` directory to your system PATH (usually `C:\Program Files\PostgreSQL\16\bin`)
+
+**macOS:**
+```bash
+brew install postgresql
+brew services start postgresql
+```
+
+**Linux:**
+```bash
+sudo apt-get update
+sudo apt-get install postgresql postgresql-contrib
+sudo systemctl start postgresql
+```
+
+#### Create the Database
+
+Open PowerShell (Windows) or Terminal (macOS/Linux):
+
+```powershell
+# Connect to PostgreSQL as postgres user
+psql -U postgres
+
+# In the psql prompt, create the database:
+CREATE DATABASE ai_mobility_db;
+
+# List databases to verify (optional)
+\l
+
+# Exit psql
+\q
+```
+
+Or create the database in one command:
+```powershell
+# Windows
+psql -U postgres -c "CREATE DATABASE ai_mobility_db;"
+
+# Linux/macOS (if you need sudo)
+sudo -u postgres psql -c "CREATE DATABASE ai_mobility_db;"
+```
+
+#### Initialize Database Tables
+
+The database initialization script will create all required tables (users, detection_history) with proper indexes:
+
+```powershell
+cd backend
+python init_database.py
+```
+
+This script will:
+- ✅ Verify PostgreSQL connection
+- ✅ Create the `ai_mobility_db` database if it doesn't exist
+- ✅ Create `users` table (id, username, email, password)
+- ✅ Create `detection_history` table (id, user_id, timestamp, results, file paths)
+- ✅ Add indexes for performance (username, email, user_id)
+- ✅ Set up foreign key relationships
+- ✅ Display detailed schema information
+
+**Expected Output:**
+```
+🚀 AI Mobility Database Initialization
+✅ Successfully connected to PostgreSQL!
+✅ Database 'ai_mobility_db' already exists.
+📊 Creating database tables...
+✅ All tables created successfully!
+✅ Database initialization successful!
+```
+
+### 4) Configure Backend Settings
 
 Create or edit `backend/.env` file:
 
 ```env
-# Database connection
+# Database connection - UPDATE WITH YOUR PASSWORD
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost/ai_mobility_db
 
 # Model paths (three models for multi-detection)
@@ -85,9 +162,11 @@ HISTORY_STORAGE_DIR=storage/history
 TEMP_UPLOAD_DIR=tmp/
 ```
 
-**Important**: Ensure all three YOLO model files exist in the `backend/models/` directory.
+**Important**: 
+- Replace `YOUR_PASSWORD` with your PostgreSQL password
+- Ensure all three YOLO model files exist in the `backend/models/` directory
 
-### 4) Start the Backend Server (FastAPI)
+### 5) Start the Backend Server (FastAPI)
 
 ```powershell
 cd backend
@@ -102,7 +181,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ✅ Backend running at: http://localhost:8000  
 📖 API documentation: http://localhost:8000/docs
 
-### 5) Start the Frontend Server
+### 6) Start the Frontend Server
 
 Open a **NEW terminal** (keep backend running), activate the environment again:
 

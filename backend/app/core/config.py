@@ -1,4 +1,10 @@
+import os
+from pathlib import Path
 from pydantic_settings import BaseSettings
+
+# Get the backend directory path (where .env should be)
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+ENV_FILE = BACKEND_DIR / ".env"
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -13,7 +19,8 @@ class Settings(BaseSettings):
     TEMP_UPLOAD_DIR: str = "tmp/"
 
     class Config:
-        env_file = ".env"
+        env_file = str(ENV_FILE)
+        env_file_encoding = 'utf-8'
         extra = "ignore"  # Ignore extra fields from old .env files
 
 settings = Settings()
