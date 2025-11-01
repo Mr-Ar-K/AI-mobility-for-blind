@@ -26,6 +26,56 @@
 
 // Accessible mobile navbar toggle
 document.addEventListener('DOMContentLoaded', () => {
+	// Theme toggle button
+	const themeBtn = document.getElementById('theme-toggle-btn');
+	if (themeBtn) {
+		const themes = ['light', 'dark', 'high-contrast'];
+		const icons = { light: '🌙', dark: '☀️', 'high-contrast': '⚡' };
+    
+		function getCurrentTheme() {
+			try {
+				const s = JSON.parse(localStorage.getItem('app_settings')||'{}');
+				return s.theme || 'light';
+			} catch(_) { return 'light'; }
+		}
+    
+		function setTheme(theme) {
+			document.documentElement.setAttribute('data-theme', theme);
+			themeBtn.textContent = icons[theme];
+			try {
+				const s = JSON.parse(localStorage.getItem('app_settings')||'{}');
+				s.theme = theme;
+				localStorage.setItem('app_settings', JSON.stringify(s));
+			} catch(_) {}
+		}
+    
+		// Initialize
+		const current = getCurrentTheme();
+		setTheme(current);
+    
+		themeBtn.addEventListener('click', () => {
+			const now = getCurrentTheme();
+			const idx = themes.indexOf(now);
+			const next = themes[(idx + 1) % themes.length];
+			setTheme(next);
+			try { if (window.playTone) window.playTone('confirm'); } catch(_) {}
+			// Announce for screen readers
+			try {
+				let liveRegion = document.getElementById('theme-announce-live');
+				if (!liveRegion) {
+					liveRegion = document.createElement('div');
+					liveRegion.id = 'theme-announce-live';
+					liveRegion.setAttribute('aria-live', 'polite');
+					liveRegion.setAttribute('aria-atomic', 'true');
+					liveRegion.style.cssText = 'position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;';
+					document.body.appendChild(liveRegion);
+				}
+				const label = next === 'high-contrast' ? 'High Contrast' : (next.charAt(0).toUpperCase() + next.slice(1));
+				liveRegion.textContent = `Theme switched to ${label}`;
+			} catch(_) {}
+		});
+	}
+
 	const toggle = document.querySelector('.navbar-toggle');
 	const navLinks = document.getElementById('primary-navigation');
 	if (!toggle || !navLinks) return;
