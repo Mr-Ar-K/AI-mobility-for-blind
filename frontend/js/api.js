@@ -212,6 +212,36 @@ async function uploadVideo(file) {
 }
 
 /**
+ * Starts detection and returns a task id for progress polling.
+ * Uses /detect/{user_id} which updates server-side progress_store.
+ * @param {File} file
+ * @returns {Promise<{task_id:string,message?:string}>}
+ */
+async function startDetection(file) {
+	const formData = new FormData();
+	formData.append('file', file);
+	const user = getUser();
+	if (!user) throw new Error('Not logged in');
+	const res = await fetchWithFallback(`/detect/${user.id}`, {
+		method: 'POST',
+		body: formData,
+	});
+	if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || 'Detection start failed');
+	return res.json();
+}
+
+/**
+ * Polls progress for a given task id.
+ * @param {string} taskId
+ * @returns {Promise<{status:string,progress:number,message?:string,estimated_time?:number,total_time?:number}>}
+ */
+async function getProgress(taskId) {
+	const res = await fetchWithFallback(`/detect/progress/${taskId}`, { method: 'GET' });
+	if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || 'Failed to fetch progress');
+	return res.json();
+}
+
+/**
  * Fetches the current user's detection history.
  * @returns {Promise<Array<object>>} A list of detection history items.
  */
@@ -221,4 +251,31 @@ async function getHistory() {
 	const res = await fetchWithFallback(`/history/${user.id}`, { method: 'GET' });
 	if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || 'Failed to fetch history');
 	return res.json();
+}
+
+/** App-level settings stored in localStorage (e.g., audio rate) **/
+function getAppSettings() {
+	try {
+		const raw = localStorage.getItem('app_settings');
+		const parsed = raw ? JSON.parse(raw) : {};
+		return parsed || {};
+	} catch (_) {
+		return {};
+	}
+}
+
+function setAppSettings(settings) {
+	try {
+		const current = getAppSettings();
+		const merged = { ...current, ...settings };
+		localStorage.setItem('app_settings', JSON.stringify(merged));
+		return merged;
+	} catch (_) { return settings; }
+}
+
+function getAudioRate() {
+	const s = getAppSettings();
+	// default 1.3x per user request
+	const rate = typeof s.audioRate === 'number' ? s.audioRate : 1.3;
+	return Math.min(2.0, Math.max(0.5, rate));
 }

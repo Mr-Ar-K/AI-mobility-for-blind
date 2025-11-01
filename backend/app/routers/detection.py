@@ -1,12 +1,14 @@
 import os
 import shutil
 import uuid
+import time
 from datetime import datetime
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Dict
 from ultralytics import YOLO
+from starlette.concurrency import run_in_threadpool
 
 from ..db import database, models, schemas
 from ..services import video_processor, audio_generator
@@ -23,6 +25,10 @@ HISTORY_STORAGE_DIR = settings.HISTORY_STORAGE_DIR
 os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 os.makedirs(HISTORY_STORAGE_DIR, exist_ok=True)
 
+# Progress tracking storage (in-memory for simplicity)
+# Format: {task_id: {"status": "processing", "progress": 45, "message": "Processing frame 100/200", "estimated_time": 30}}
+progress_store = {}
+
 def get_user_storage_path(username: str, timestamp: datetime) -> str:
     """
     Create and return a storage path organized by username and date/time.
@@ -38,7 +44,41 @@ def get_user_storage_path(username: str, timestamp: datetime) -> str:
 def get_model(request: Request):
     return request.app.state.model
 
-@router.post("/{user_id}", response_model=List[str])
+@router.get("/test-models")
+async def test_models(request: Request):
+    """Test endpoint to verify all models are loaded correctly"""
+    try:
+        model_yolo = request.app.state.model_yolo
+        model_lights = request.app.state.model_lights
+        model_zebra = request.app.state.model_zebra
+        
+        return {
+            "status": "success",
+            "models_loaded": {
+                "yolov8m": str(type(model_yolo)),
+                "traffic_lights": str(type(model_lights)),
+                "zebra_crossing": str(type(model_zebra))
+            },
+            "message": "All models are loaded and ready"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Model loading error: {str(e)}"
+        }
+
+@router.get("/progress/{task_id}")
+async def get_progress(task_id: str):
+    """
+    Get the progress of a detection task.
+    Returns status, progress percentage, message, and estimated time remaining.
+    """
+    if task_id not in progress_store:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    return progress_store[task_id]
+
+@router.post("/{user_id}")
 async def detect_video(
     user_id: int,
     request: Request,
@@ -50,6 +90,15 @@ async def detect_video(
     model_lights = request.app.state.model_lights
     model_zebra = request.app.state.model_zebra
     
+    # Generate task ID for progress tracking
+    task_id = str(uuid.uuid4())
+    progress_store[task_id] = {
+        "status": "uploading",
+        "progress": 0,
+        "message": "Uploading video...",
+        "estimated_time": None
+    }
+    
     # 1. Check if user exists
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
@@ -60,11 +109,22 @@ async def detect_video(
     file_extension = os.path.splitext(file.filename)[1]
     temp_filename = f"{uuid.uuid4()}{file_extension}"
     temp_video_path = os.path.join(TEMP_UPLOAD_DIR, temp_filename)
-
+    
+    start_time = time.time()
+    
     try:
         with open(temp_video_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        upload_time = time.time() - start_time
+        print(f"Video uploaded in {upload_time:.2f} seconds")
+        progress_store[task_id] = {
+            "status": "uploaded",
+            "progress": 10,
+            "message": "Video uploaded successfully",
+            "estimated_time": None
+        }
     except Exception as e:
+        progress_store[task_id] = {"status": "failed", "progress": 0, "message": f"Upload failed: {e}", "estimated_time": None}
         raise HTTPException(status_code=500, detail=f"Failed to save video file: {e}")
     finally:
         file.file.close()
@@ -78,28 +138,66 @@ async def detect_video(
     saved_video_path = os.path.join(user_storage_dir, video_filename)
     
     # 4. Process the video with all three models and create annotated video
+    print(f"Starting video detection processing...")
+    progress_store[task_id] = {
+        "status": "processing",
+        "progress": 20,
+        "message": "Detecting objects in video...",
+        "estimated_time": None
+    }
+    
+    detection_start = time.time()
     try:
-        audio_results_list = video_processor.run_detection_with_video(
-            temp_video_path,
-            saved_video_path,
-            model_yolo, 
-            model_lights, 
-            model_zebra
-        )
+        # Limit concurrent processing to avoid CPU overload
+        async with request.app.state.semaphore:
+            audio_results_list = await run_in_threadpool(
+                video_processor.run_detection_with_video,
+                temp_video_path,
+                saved_video_path,
+                model_yolo,
+                model_lights,
+                model_zebra
+            )
+        detection_time = time.time() - detection_start
+        print(f"Detection completed in {detection_time:.2f} seconds")
+        
+        progress_store[task_id] = {
+            "status": "processing",
+            "progress": 70,
+            "message": "Detection complete, generating audio...",
+            "estimated_time": None
+        }
+        
+        # DELETE UPLOADED VIDEO IMMEDIATELY AFTER PROCESSING
+        try:
+            os.remove(temp_video_path)
+            print(f"Deleted uploaded video: {temp_video_path}")
+        except Exception as e:
+            print(f"Warning: Failed to delete uploaded file {temp_video_path}: {e}")
+            
     except Exception as e:
+        # Clean up on error
+        progress_store[task_id] = {"status": "failed", "progress": 0, "message": f"Detection failed: {e}", "estimated_time": None}
+        try:
+            os.remove(temp_video_path)
+        except:
+            pass
         raise HTTPException(status_code=500, detail=f"Failed during video processing: {e}")
     
     # 5. Generate audio file and save to user's directory
     saved_audio_path = None
+    audio_start = time.time()
     try:
-        generator = audio_generator.AudioGenerator(pause_duration=700)
+        # Speed up audio generation with shorter pauses
+        generator = audio_generator.AudioGenerator(pause_duration=250)
         temp_audio_path = generator.generate_audio_quick(audio_results_list)
         
         # Move audio to permanent storage
         audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"
         saved_audio_path = os.path.join(user_storage_dir, audio_filename)
         shutil.move(temp_audio_path, saved_audio_path)
-        print(f"Audio saved to: {saved_audio_path}")
+        audio_time = time.time() - audio_start
+        print(f"Audio generated and saved in {audio_time:.2f} seconds: {saved_audio_path}")
     except Exception as e:
         print(f"Warning: Failed to generate/save audio: {e}")
         # Continue even if audio generation fails
@@ -120,14 +218,24 @@ async def detect_video(
         print(f"Failed to save history: {e}")
         # We don't raise an error here, as the user should still get their results
 
-    # 7. Clean up the temporary video
-    try:
-        os.remove(temp_video_path)
-    except Exception as e:
-        print(f"Warning: Failed to delete temporary file {temp_video_path}: {e}")
-
-    # 8. Return the audio strings to the frontend
-    return audio_results_list
+    # 7. Return the audio strings and timing information
+    total_time = time.time() - start_time
+    print(f"Total processing time: {total_time:.2f} seconds")
+    
+    progress_store[task_id] = {
+        "status": "completed",
+        "progress": 100,
+        "message": f"Processing complete in {total_time:.1f} seconds",
+        "estimated_time": 0,
+        "total_time": total_time
+    }
+    
+    return {
+        "task_id": task_id,
+        "results": audio_results_list,
+        "processing_time": round(total_time, 2),
+        "message": "Detection completed successfully"
+    }
 
 
 @router.post("/{user_id}/with-audio", response_model=Dict)
@@ -155,10 +263,14 @@ async def detect_video_with_audio(
     file_extension = os.path.splitext(file.filename)[1]
     temp_filename = f"{uuid.uuid4()}{file_extension}"
     temp_video_path = os.path.join(TEMP_UPLOAD_DIR, temp_filename)
+    
+    start_time = time.time()
 
     try:
         with open(temp_video_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        upload_time = time.time() - start_time
+        print(f"Video uploaded in {upload_time:.2f} seconds")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save video file: {e}")
     finally:
@@ -173,29 +285,50 @@ async def detect_video_with_audio(
     saved_video_path = os.path.join(user_storage_dir, video_filename)
     
     # 5. Process the video with all three models and save with bounding boxes
+    print(f"Starting video detection processing...")
+    detection_start = time.time()
     try:
-        audio_results_list = video_processor.run_detection_with_video(
-            temp_video_path,
-            saved_video_path,  # Save annotated video directly
-            model_yolo, 
-            model_lights, 
-            model_zebra
-        )
+        async with request.app.state.semaphore:
+            audio_results_list = await run_in_threadpool(
+                video_processor.run_detection_with_video,
+                temp_video_path,
+                saved_video_path,  # Save annotated video directly
+                model_yolo,
+                model_lights,
+                model_zebra
+            )
+        detection_time = time.time() - detection_start
+        print(f"Detection completed in {detection_time:.2f} seconds")
         print(f"Annotated video saved to: {saved_video_path}")
+        
+        # DELETE UPLOADED VIDEO IMMEDIATELY AFTER PROCESSING
+        try:
+            os.remove(temp_video_path)
+            print(f"Deleted uploaded video: {temp_video_path}")
+        except Exception as e:
+            print(f"Warning: Failed to delete uploaded file {temp_video_path}: {e}")
+            
     except Exception as e:
+        # Clean up on error
+        try:
+            os.remove(temp_video_path)
+        except:
+            pass
         raise HTTPException(status_code=500, detail=f"Failed during video processing: {e}")
     
     # 6. Generate audio file and save to user's directory
     saved_audio_path = None
+    audio_start = time.time()
     try:
-        generator = audio_generator.AudioGenerator(pause_duration=700)
+        generator = audio_generator.AudioGenerator(pause_duration=250)
         temp_audio_path = generator.generate_audio_quick(audio_results_list)
         
         # Move audio to permanent storage
         audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"
         saved_audio_path = os.path.join(user_storage_dir, audio_filename)
         shutil.move(temp_audio_path, saved_audio_path)
-        print(f"Audio saved to: {saved_audio_path}")
+        audio_time = time.time() - audio_start
+        print(f"Audio generated and saved in {audio_time:.2f} seconds: {saved_audio_path}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate audio: {e}")
 
@@ -217,19 +350,18 @@ async def detect_video_with_audio(
         print(f"Failed to save history: {e}")
         detection_id = None
 
-    # 8. Clean up the temporary video
-    try:
-        os.remove(temp_video_path)
-    except Exception as e:
-        print(f"Warning: Failed to delete temporary file {temp_video_path}: {e}")
-
-    # 9. Return both text results and audio file info
+    # 8. Calculate total time and return
+    total_time = time.time() - start_time
+    print(f"Total processing time: {total_time:.2f} seconds")
+    
     return {
         "text_results": audio_results_list,
         "audio_file": os.path.basename(saved_audio_path) if saved_audio_path else None,
         "audio_url": f"/history/audio/{detection_id}" if detection_id else None,
         "video_url": f"/history/video/{detection_id}" if detection_id else None,
-        "detection_id": detection_id
+        "detection_id": detection_id,
+        "processing_time": round(total_time, 2),
+        "message": "Detection completed successfully"
     }
 
 

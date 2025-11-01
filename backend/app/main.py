@@ -2,6 +2,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 import torch
+import asyncio
+from collections import deque
+import os
 
 from .core.config import settings
 from .db import database, models
@@ -22,12 +25,20 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+# --- Initialize Task Queue for Multi-User Processing ---
+app.state.task_queue = deque()  # FIFO queue for processing tasks
+app.state.processing_lock = asyncio.Lock()  # Legacy lock (unused with semaphore)
+app.state.queue_enabled = True
+app.state.max_concurrency = max(1, (os.cpu_count() or 2) // 2)  # Conservative on CPU-only
+app.state.semaphore = asyncio.Semaphore(app.state.max_concurrency)
+
 # --- Load All Three Models at Startup ---
 @app.on_event("startup")
 def load_model():
     print("Loading multi-model detection system...")
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
+    print("✅ Multi-user task queue initialized")
     
     # Model 1: YOLOv8m (for general objects - cars, people, etc.)
     print(f"Loading YOLOv8m model from: {settings.MODEL_PATH_YOLO}")

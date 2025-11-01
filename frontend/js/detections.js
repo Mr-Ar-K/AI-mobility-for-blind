@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 				audioPlayer.style.width = '100%';
 				// Backend serves audio at /history/audio/{id}
 				audioPlayer.src = `${API_URL}/history/audio/${item.id}`;
+				audioPlayer.playbackRate = (typeof getAudioRate === 'function') ? getAudioRate() : 1.3;
 				card.appendChild(audioPlayer);
 			}
 
