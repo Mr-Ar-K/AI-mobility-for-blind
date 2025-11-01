@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 from ultralytics import YOLO
 from . import detection_logic  # Import from our new logic file
 
@@ -8,6 +9,21 @@ YOLO_IMGSZ = 640  # downscale for faster inference
 YOLO_CONF = 0.5   # raise threshold to reduce boxes
 YOLO_IOU = 0.5
 YOLO_MAX_DET = 50 # limit detections per frame
+
+# Color scheme for bounding boxes (BGR format for OpenCV)
+COLORS = {
+    'Person': (0, 255, 0),       # Green
+    'Car': (255, 0, 0),          # Blue
+    'Bus': (255, 0, 0),          # Blue
+    'Truck': (255, 0, 0),        # Blue
+    'Motorcycle': (255, 0, 0),   # Blue
+    'Bicycle': (0, 255, 255),    # Yellow
+    'Green Light': (0, 255, 0),  # Green
+    'Red Light': (0, 0, 255),    # Red
+    'Yellow Light': (0, 255, 255), # Yellow
+    'Zebra Crossing': (255, 255, 0), # Cyan
+    'default': (255, 255, 255)   # White
+}
 
 def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_zebra: YOLO) -> list[str]:
     """
@@ -181,5 +197,211 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
         except Exception:
             pass
     print(f"Processed {processed_frames} frames (sampled from {frame_count}). Found {len(audio_log)} audio messages.")
+    
+    return audio_log
+
+
+def run_detection_with_video(video_path: str, output_video_path: str, model_yolo: YOLO, model_lights: YOLO, model_zebra: YOLO) -> list[str]:
+    """
+    Processes a video file and creates an annotated output video with bounding boxes.
+    Returns the same audio descriptions as run_detection().
+    
+    Args:
+        video_path: Path to input video
+        output_video_path: Path where annotated video will be saved
+        model_yolo: YOLOv8m model for general objects
+        model_lights: Traffic lights detection model
+        model_zebra: Zebra crossing detection model
+    
+    Returns:
+        List of audio description strings
+    """
+    audio_log = []
+    detection_state = {}
+    cap = None
+    out = None
+    frame_count = 0
+    processed_frames = 0
+    
+    try:
+        cap = cv2.VideoCapture(video_path)
+        frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30
+        
+        if not cap.isOpened():
+            print(f"Error: Could not open video file {video_path}")
+            return ["Error: Could not open video file."]
+        
+        # Setup video writer for output
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_w, frame_h))
+        
+        print(f"Creating annotated video: {output_video_path}")
+        
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # Make a copy for drawing
+            annotated_frame = frame.copy()
+            detections = []
+            
+            # ========== STEP 1: Run YOLOv8m (General Objects) ==========
+            yolo_classes_to_keep = [i for i in range(80) if i != 9]
+            results_yolo = model_yolo(
+                frame,
+                classes=yolo_classes_to_keep,
+                conf=YOLO_CONF,
+                iou=YOLO_IOU,
+                imgsz=YOLO_IMGSZ,
+                max_det=YOLO_MAX_DET,
+                verbose=False
+            )
+            
+            for r in results_yolo:
+                for box in r.boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    conf = float(box.conf[0])
+                    cls_id = int(box.cls[0])
+                    
+                    label = detection_logic.YOLO_CLASS_NAMES.get(cls_id, f"Object_{cls_id}")
+                    
+                    cx = (x1 + x2) / 2
+                    cy = (y1 + y2) / 2
+                    
+                    horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
+                    dist_score = detection_logic.calculate_distance_score(y2, frame_h)
+                    
+                    detections.append({
+                        'label': label, 'conf': conf,
+                        'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
+                        'cx': cx, 'cy': cy,
+                        'horiz': horiz, 'depth': depth, 'dist_score': dist_score,
+                        'model': 'yolo'
+                    })
+            
+            # ========== STEP 2: Run Traffic Lights Model ==========
+            light_classes_to_keep = [2, 3, 4]
+            results_lights = model_lights(
+                frame,
+                classes=light_classes_to_keep,
+                conf=YOLO_CONF,
+                iou=YOLO_IOU,
+                imgsz=YOLO_IMGSZ,
+                max_det=YOLO_MAX_DET,
+                verbose=False
+            )
+            
+            for r in results_lights:
+                for box in r.boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    conf = float(box.conf[0])
+                    cls_id = int(box.cls[0])
+                    
+                    label = detection_logic.TRAFFIC_LIGHT_CLASS_NAMES.get(cls_id, f"Light_{cls_id}")
+                    
+                    cx = (x1 + x2) / 2
+                    cy = (y1 + y2) / 2
+                    
+                    horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
+                    dist_score = detection_logic.calculate_distance_score(y2, frame_h)
+                    
+                    detections.append({
+                        'label': label, 'conf': conf,
+                        'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
+                        'cx': cx, 'cy': cy,
+                        'horiz': horiz, 'depth': depth, 'dist_score': dist_score,
+                        'model': 'lights'
+                    })
+            
+            # ========== STEP 3: Run Zebra Crossing Model ==========
+            zebra_classes_to_keep = [8]
+            results_zebra = model_zebra(
+                frame,
+                classes=zebra_classes_to_keep,
+                conf=YOLO_CONF,
+                iou=YOLO_IOU,
+                imgsz=YOLO_IMGSZ,
+                max_det=YOLO_MAX_DET,
+                verbose=False
+            )
+            
+            for r in results_zebra:
+                for box in r.boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    conf = float(box.conf[0])
+                    cls_id = int(box.cls[0])
+                    
+                    label = detection_logic.ZEBRA_CLASS_NAMES.get(cls_id, f"Crossing_{cls_id}")
+                    
+                    cx = (x1 + x2) / 2
+                    cy = (y1 + y2) / 2
+                    
+                    horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
+                    dist_score = detection_logic.calculate_distance_score(y2, frame_h)
+                    
+                    detections.append({
+                        'label': label, 'conf': conf,
+                        'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
+                        'cx': cx, 'cy': cy,
+                        'horiz': horiz, 'depth': depth, 'dist_score': dist_score,
+                        'model': 'zebra'
+                    })
+            
+            # ========== STEP 4: Draw Bounding Boxes ==========
+            for det in detections:
+                x1, y1, x2, y2 = int(det['x1']), int(det['y1']), int(det['x2']), int(det['y2'])
+                label = det['label']
+                conf = det['conf']
+                
+                # Get color for this object type
+                color = COLORS.get(label, COLORS['default'])
+                
+                # Draw bounding box
+                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
+                
+                # Draw label background
+                label_text = f"{label} {conf:.2f}"
+                (text_w, text_h), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+                cv2.rectangle(annotated_frame, (x1, y1 - text_h - 10), (x1 + text_w, y1), color, -1)
+                
+                # Draw label text
+                cv2.putText(annotated_frame, label_text, (x1, y1 - 5),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            
+            # ========== STEP 5: Process Audio (only sample frames) ==========
+            if frame_count % max(1, int(round(fps / TARGET_FPS))) == 0:
+                grouped = detection_logic.group_detections(detections, frame_w, frame_h)
+                if detections:
+                    audio_message = detection_logic.generate_audio_message(grouped, frame_count, fps, detection_state)
+                    if audio_message:
+                        audio_log.append(audio_message)
+                processed_frames += 1
+                
+                # Optional: stop early if we already have enough guidance messages
+                if len(audio_log) >= 12:
+                    # Continue writing remaining frames but stop generating audio
+                    pass
+            
+            # Write annotated frame to output video
+            out.write(annotated_frame)
+            frame_count += 1
+        
+    except Exception as e:
+        print(f"Error during video processing with annotation: {e}")
+        audio_log.append(f"An error occurred during processing: {e}")
+    finally:
+        try:
+            if cap is not None:
+                cap.release()
+            if out is not None:
+                out.release()
+        except Exception:
+            pass
+    
+    print(f"Annotated video saved: {output_video_path}")
+    print(f"Processed {processed_frames} sampled frames from {frame_count} total frames. Found {len(audio_log)} audio messages.")
     
     return audio_log

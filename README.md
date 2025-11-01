@@ -187,7 +187,9 @@ python -m http.server 5500
 ### Viewing Detection History
 1. Go to **Detections** page (say _"go to detections"_)
 2. View all your past detections with timestamps
-3. Play any audio: _"play first audio"_, _"play audio number 2"_
+3. Watch the detected videos directly in your browser
+4. Play any audio: _"play first audio"_, _"play audio number 2"_
+5. Play videos: _"play video"_, _"play second video"_, _"pause video"_
 
 ### Voice Commands Reference
 
@@ -211,9 +213,15 @@ python -m http.server 5500
 
 **Audio Control**
 - _"play audio"_ / _"play the summary"_
-- _"pause"_
+- _"pause audio"_
 - _"play first/second/third audio"_
 - _"play audio number [X]"_
+
+**Video Control (Detections Page)**
+- _"play video"_ / _"play first video"_
+- _"pause video"_
+- _"play second/third video"_
+- _"play video number [X]"_
 
 **Profile Page**
 - _"first name is [new name]"_

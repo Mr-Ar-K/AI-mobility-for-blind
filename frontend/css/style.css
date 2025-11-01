@@ -421,3 +421,17 @@ label {
 .detection-item audio {
   width: 100%;
 }
+.detection-item video {
+  width: 100%;
+  max-width: 640px;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: hsl(var(--muted));
+}
+.detection-item img {
+  width: 100%;
+  max-width: 640px;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  object-fit: contain;
+}

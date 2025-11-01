@@ -74,12 +74,31 @@ def get_detection_video(detection_id: int, db: Session = Depends(database.get_db
     if not detection:
         raise HTTPException(status_code=404, detail="Detection history not found")
     
-    if not detection.video_path or not os.path.exists(detection.video_path):
-        raise HTTPException(status_code=404, detail="Video file not found")
+    print(f"Video request for detection {detection_id}: video_path = {detection.video_path}")
+    
+    if not detection.video_path:
+        raise HTTPException(status_code=404, detail="No video file associated with this detection")
+    
+    if not os.path.exists(detection.video_path):
+        print(f"Video file does not exist at path: {detection.video_path}")
+        raise HTTPException(status_code=404, detail=f"Video file not found at expected location")
+    
+    # Determine media type from file extension
+    file_ext = os.path.splitext(detection.video_path)[1].lower()
+    media_type_map = {
+        '.mp4': 'video/mp4',
+        '.avi': 'video/x-msvideo',
+        '.mov': 'video/quicktime',
+        '.webm': 'video/webm',
+        '.mkv': 'video/x-matroska'
+    }
+    media_type = media_type_map.get(file_ext, 'video/mp4')
+    
+    print(f"Serving video: {detection.video_path} as {media_type}")
     
     return FileResponse(
         detection.video_path,
-        media_type="video/mp4",
+        media_type=media_type,
         filename=os.path.basename(detection.video_path)
     )
 

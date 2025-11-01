@@ -69,10 +69,19 @@ async def detect_video(
     finally:
         file.file.close()
 
-    # 3. Process the video with all three models
+    # 3. Get timestamp and create user storage directory
+    detection_timestamp = datetime.now()
+    user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
+    
+    # 3.5. Define output video path (annotated version)
+    video_filename = f"video_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
+    saved_video_path = os.path.join(user_storage_dir, video_filename)
+    
+    # 4. Process the video with all three models and create annotated video
     try:
-        audio_results_list = video_processor.run_detection(
-            temp_video_path, 
+        audio_results_list = video_processor.run_detection_with_video(
+            temp_video_path,
+            saved_video_path,
             model_yolo, 
             model_lights, 
             model_zebra
@@ -80,11 +89,7 @@ async def detect_video(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed during video processing: {e}")
     
-    # 3.5. Get timestamp and create user storage directory
-    detection_timestamp = datetime.now()
-    user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
-    
-    # 3.6. Generate audio file and save to user's directory
+    # 5. Generate audio file and save to user's directory
     saved_audio_path = None
     try:
         generator = audio_generator.AudioGenerator(pause_duration=700)
@@ -99,23 +104,14 @@ async def detect_video(
         print(f"Warning: Failed to generate/save audio: {e}")
         # Continue even if audio generation fails
 
-    # 3.7. Save video to user's directory
-    saved_video_path = None
-    try:
-        video_filename = f"video_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
-        saved_video_path = os.path.join(user_storage_dir, video_filename)
-        shutil.copy2(temp_video_path, saved_video_path)
-        print(f"Video saved to: {saved_video_path}")
-    except Exception as e:
-        print(f"Warning: Failed to save video to history: {e}")
-
-    # 4. Save results to history (including video and audio paths)
+    # 6. Save results to history (including video and audio paths)
     try:
         history_entry = models.DetectionHistory(
             user_id=user_id,
             results=audio_results_list,
             video_path=saved_video_path,
-            audio_path=saved_audio_path
+            audio_path=saved_audio_path,
+            media_type="video"
         )
         db.add(history_entry)
         db.commit()
@@ -124,13 +120,13 @@ async def detect_video(
         print(f"Failed to save history: {e}")
         # We don't raise an error here, as the user should still get their results
 
-    # 5. Clean up the temporary video
+    # 7. Clean up the temporary video
     try:
         os.remove(temp_video_path)
     except Exception as e:
         print(f"Warning: Failed to delete temporary file {temp_video_path}: {e}")
 
-    # 6. Return the audio strings to the frontend
+    # 8. Return the audio strings to the frontend
     return audio_results_list
 
 
@@ -168,22 +164,28 @@ async def detect_video_with_audio(
     finally:
         file.file.close()
 
-    # 3. Process the video with all three models
+    # 3. Get timestamp and create user storage directory first
+    detection_timestamp = datetime.now()
+    user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
+    
+    # 4. Define output video path for annotated video
+    video_filename = f"video_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
+    saved_video_path = os.path.join(user_storage_dir, video_filename)
+    
+    # 5. Process the video with all three models and save with bounding boxes
     try:
-        audio_results_list = video_processor.run_detection(
-            temp_video_path, 
+        audio_results_list = video_processor.run_detection_with_video(
+            temp_video_path,
+            saved_video_path,  # Save annotated video directly
             model_yolo, 
             model_lights, 
             model_zebra
         )
+        print(f"Annotated video saved to: {saved_video_path}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed during video processing: {e}")
     
-    # 4. Get timestamp and create user storage directory
-    detection_timestamp = datetime.now()
-    user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
-    
-    # 5. Generate audio file and save to user's directory
+    # 6. Generate audio file and save to user's directory
     saved_audio_path = None
     try:
         generator = audio_generator.AudioGenerator(pause_duration=700)
@@ -197,23 +199,14 @@ async def detect_video_with_audio(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate audio: {e}")
 
-    # 6. Save video to user's directory
-    saved_video_path = None
-    try:
-        video_filename = f"video_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
-        saved_video_path = os.path.join(user_storage_dir, video_filename)
-        shutil.copy2(temp_video_path, saved_video_path)
-        print(f"Video saved to: {saved_video_path}")
-    except Exception as e:
-        print(f"Warning: Failed to save video to history: {e}")
-
-    # 7. Save results to history
+    # 7. Save results to history (video is already saved with annotations)
     try:
         history_entry = models.DetectionHistory(
             user_id=user_id,
             results=audio_results_list,
             video_path=saved_video_path,
-            audio_path=saved_audio_path
+            audio_path=saved_audio_path,
+            media_type="video"
         )
         db.add(history_entry)
         db.commit()

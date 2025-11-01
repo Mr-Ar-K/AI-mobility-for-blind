@@ -135,6 +135,26 @@
   }
 
   function handleDetectionsCommands(cmd) {
+    // Video controls
+    if (/play video|play (the )?first video/.test(cmd)) {
+      const v = on('video'); if (v) { v.play(); speak('Playing video'); } else { speak('No video found'); }
+      return true;
+    }
+    if (/pause video/.test(cmd)) {
+      const v = on('video'); if (v) { v.pause(); speak('Paused'); } else { speak('No video found'); }
+      return true;
+    }
+    // Play nth video: "play second video" or "play video number 2"
+    const nthMap = { first:1, second:2, third:3, fourth:4, fifth:5 };
+    const videoMatch = cmd.match(/play (the )?(\w+) video|play video number (\d+)/);
+    if (videoMatch) {
+      let idx = null;
+      if (videoMatch[2] && nthMap[videoMatch[2]]) idx = nthMap[videoMatch[2]] - 1;
+      if (videoMatch[3]) idx = parseInt(videoMatch[3], 10) - 1;
+      const videos = onAll('video');
+      if (idx != null && videos[idx]) { videos[idx].play(); speak('Playing video'); return true; }
+      speak('Video not found'); return true;
+    }
     // Covered by common audio commands
     return false;
   }
