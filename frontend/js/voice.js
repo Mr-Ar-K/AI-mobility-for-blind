@@ -5,6 +5,14 @@
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const synth = window.speechSynthesis;
 
+  // Apply theme from settings on every page early
+  try {
+    const s = JSON.parse(localStorage.getItem('app_settings')||'{}');
+    if (s && s.theme) {
+      document.documentElement.setAttribute('data-theme', s.theme);
+    }
+  } catch(_) {}
+
   function speak(text) {
     try {
       if (!synth) return;
@@ -16,6 +24,29 @@
       synth.speak(utter);
     } catch (_) {}
   }
+
+  // Non-verbal tones using Web Audio API
+  function playTone(kind = 'ping') {
+    try {
+      const settings = JSON.parse(localStorage.getItem('app_settings')||'{}');
+      if (settings && settings.enableTones === false) return; // disabled
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      const now = ctx.currentTime;
+      let freq = 880; let dur = 0.08;
+      if (kind === 'success') { freq = 1047; dur = 0.12; }
+      if (kind === 'confirm') { freq = 988; dur = 0.1; }
+      if (kind === 'ping') { freq = 880; dur = 0.08; }
+      o.type = 'sine'; o.frequency.setValueAtTime(freq, now);
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      o.start(now); o.stop(now + dur + 0.02);
+    } catch(_) {}
+  }
+  window.playTone = playTone;
 
   if (!SpeechRecognition) {
     console.warn('SpeechRecognition not supported in this browser');
@@ -720,6 +751,49 @@
 
   // Activate voice commands when user clicks anywhere on the page
   document.addEventListener('DOMContentLoaded', () => {
+  // Inject global background overlay (marquee + brand mark)
+  try {
+    if (!document.querySelector('.bg-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.className = 'bg-overlay';
+      // Brand mark
+      const mark = document.createElement('div');
+      mark.className = 'bg-brand-mark';
+      mark.textContent = 'AI Mobility Assist';
+      overlay.appendChild(mark);
+      // Running texts from config
+      const messages = (window.APP_CONFIG && window.APP_CONFIG.marqueeMessages) ? window.APP_CONFIG.marqueeMessages : [
+        'Voice-first',
+        'Multi-language',
+        'Accessibility-first',
+      ];
+      const makeMarquee = (pos) => {
+        const row = document.createElement('div');
+        row.className = 'bg-marquee ' + pos;
+        const track = document.createElement('div');
+        track.className = 'track';
+        const track2 = document.createElement('div');
+        track2.className = 'track';
+        const fill = (t) => {
+          for (let i = 0; i < 3; i++) {
+            for (const m of messages) {
+              const span = document.createElement('span');
+              span.className = 'item';
+              span.textContent = `• ${m}`;
+              t.appendChild(span);
+            }
+          }
+        };
+        fill(track); fill(track2);
+        row.appendChild(track); row.appendChild(track2);
+        return row;
+      };
+      overlay.appendChild(makeMarquee('top'));
+      overlay.appendChild(makeMarquee('bottom'));
+      document.body.appendChild(overlay);
+    }
+  } catch(_) {}
+
   // Build contextual tips per settings
   initTipsUI();
 
@@ -759,6 +833,7 @@
         startListening();
         voiceButton.innerHTML = '🎤 Voice Active (Click to Stop)';
         voiceButton.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+        try { playTone('ping'); } catch(_) {}
         // Speak one short tip on activation
         const tips = tipsForPath(window.location.pathname);
         if (tips && tips.length) speak(tips[0]);
@@ -766,6 +841,7 @@
         stopListening();
         voiceButton.innerHTML = '🎤 Click to Activate Voice Commands';
         voiceButton.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        try { playTone('confirm'); } catch(_) {}
       }
     };
     
@@ -777,6 +853,7 @@
         startListening();
         voiceButton.innerHTML = '🎤 Voice Active (Click to Stop)';
         voiceButton.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+        try { playTone('ping'); } catch(_) {}
         const tips = tipsForPath(window.location.pathname);
         if (tips && tips.length) speak(tips[0]);
       }

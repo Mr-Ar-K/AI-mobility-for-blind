@@ -3,25 +3,31 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>My Detections - AI Mobility</title>
+	<title>AI powered mobility assistive for visually challenged persons</title>
 	<link rel="stylesheet" href="css/style.css">
+	<script src="js/config.js"></script>
 	<script src="js/auth.js"></script>
 </head>
 <body>
 	<header class="navbar-container">
 		<nav class="navbar">
-			<a href="home.html" class="navbar-brand">Object Detecto</a>
-			<div class="navbar-links">
+			<button class="navbar-toggle" aria-controls="primary-navigation" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="bar"></span>
+				<span class="bar"></span>
+				<span class="bar"></span>
+			</button>
+			<a href="home.html" class="navbar-brand">AI Mobility Assist</a>
+			<div id="primary-navigation" class="navbar-links">
 				<a href="home.html" class="nav-link" aria-label="Go to Home">Home</a>
 				<a href="upload.html" class="nav-link" aria-label="Go to Upload">Upload</a>
 				<a href="detections.html" class="nav-link" aria-label="Go to Detections">Detections</a>
 				<a href="about.html" class="nav-link" aria-label="Go to About">About</a>
 			</div>
 			<div class="navbar-profile">
-				<a href="profile.html" class="nav-avatar">
+				<a href="profile.html" class="nav-avatar" aria-label="Go to Profile and Settings">
 					<span id="user-initials">...</span>
 				</a>
-				<button id="logout-button" class="button-logout">Logout</button>
+				<button id="logout-button" class="button-logout" aria-label="Logout">Logout</button>
 			</div>
 		</nav>
 	</header>

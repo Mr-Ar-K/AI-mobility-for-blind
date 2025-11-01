@@ -33,9 +33,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 		// auth.js will handle the redirect if the token is invalid
 	}
 
+	// Mark active nav link on all pages
+	try {
+		const cur = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+		document.querySelectorAll('.nav-link').forEach(a => {
+			const isActive = (a.getAttribute('href') || '').toLowerCase().endsWith(cur);
+			if (isActive) { a.classList.add('active'); a.setAttribute('aria-current','page'); }
+			else { a.classList.remove('active'); a.removeAttribute('aria-current'); }
+		});
+	} catch(_) {}
+
 	// --- 2. Home Page Specific Logic ---
 	// This code only runs if it finds the ".home-grid"
 	if (document.querySelector('.home-grid')) {
+
 		// Announce home page for blind users
 		if ('speechSynthesis' in window) {
 			const utterance = new SpeechSynthesisUtterance(`Welcome home, ${firstName}! You can say go to upload to process a new video, or say go to detections to review your history. You can also say go to profile to change your settings, or say help to hear all available commands.`);
@@ -44,17 +55,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 			window.speechSynthesis.speak(utterance);
 		}
 
-		document.getElementById('upload-card').addEventListener('click', () => {
+		const uploadCard = document.getElementById('upload-card');
+		uploadCard.addEventListener('click', () => {
 			window.location.href = 'upload.html';
 		});
-		document.getElementById('detections-card').addEventListener('click', () => {
+		uploadCard.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'upload.html'; }
+		});
+
+		const detectionsCard = document.getElementById('detections-card');
+		detectionsCard.addEventListener('click', () => {
 			window.location.href = 'detections.html';
 		});
-		document.getElementById('about-card').addEventListener('click', () => {
+		detectionsCard.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'detections.html'; }
+		});
+
+		const aboutCard = document.getElementById('about-card');
+		aboutCard.addEventListener('click', () => {
 			window.location.href = 'about.html';
 		});
-		document.getElementById('feedback-card').addEventListener('click', () => {
+		aboutCard.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'about.html'; }
+		});
+
+		const feedbackCard = document.getElementById('feedback-card');
+		feedbackCard.addEventListener('click', () => {
 			window.location.href = 'feedback.html';
+		});
+		feedbackCard.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'feedback.html'; }
 		});
 	}
 });

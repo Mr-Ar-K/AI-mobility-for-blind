@@ -86,6 +86,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 			// Always re-enable button
 			updateButton.disabled = false;
 			updateButton.textContent = 'Save All Changes';
+
+			try { if (window.playTone) window.playTone('confirm'); } catch(_) {}
 		}
 	});
 });

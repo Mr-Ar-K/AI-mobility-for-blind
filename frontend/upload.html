@@ -3,15 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload - AI Mobility</title>
+    <title>AI powered mobility assistive for visually challenged persons</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
 </head>
 <body>
     <header class="navbar-container">
         <nav class="navbar">
-            <a href="home.html" class="navbar-brand">Object Detecto</a>
-            <div class="navbar-links">
+            <button class="navbar-toggle" aria-controls="primary-navigation" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+            <a href="home.html" class="navbar-brand">AI Mobility Assist</a>
+            <div id="primary-navigation" class="navbar-links">
                 <a href="home.html" class="nav-link" aria-label="Go to Home">Home</a>
                 <a href="upload.html" class="nav-link" aria-label="Go to Upload">Upload</a>
                 <a href="detections.html" class="nav-link" aria-label="Go to Detections">Detections</a>
@@ -63,6 +69,19 @@
 
             <div id="results-container" class="results-container" aria-live="polite" aria-label="Detection results">
                 </div>
+        </div>
+
+        <!-- Live Detection (Static Demo) -->
+        <div class="content-box" style="max-width: 700px; margin: 24px auto 0 auto;">
+            <h2 class="section-title" style="margin-top:0">Live Detection</h2>
+            <p class="page-subtitle" style="margin-top:-6px">Live detection using the camera.</p>
+            <div id="live-demo"
+                 style="display:flex; flex-direction:column; gap:12px; align-items:center;">
+                <div id="live-demo-video-wrapper" style="width:100%; max-width:720px; background:#000; border-radius:12px; overflow:hidden; aspect-ratio:16/9; display:flex; align-items:center; justify-content:center; color:#888;">
+                    <span>Live detection will happen here.</span>
+                </div>
+                <button id="start-demo" class="button button-secondary" aria-label="Start live detection demo">Start Demo</button>
+            </div>
         </div>
     </main>
     

@@ -3,43 +3,120 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>About - AI Mobility</title>
+	<title>AI powered mobility assistive for visually challenged persons</title>
 	<link rel="stylesheet" href="css/style.css">
+	<script src="js/config.js"></script>
 	<script src="js/auth.js"></script>
 </head>
 <body>
 	<header class="navbar-container">
 		<nav class="navbar">
-			<a href="home.html" class="navbar-brand">Object Detecto</a>
-			<div class="navbar-links">
+			<button class="navbar-toggle" aria-controls="primary-navigation" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="bar"></span>
+				<span class="bar"></span>
+				<span class="bar"></span>
+			</button>
+			<a href="home.html" class="navbar-brand">AI Mobility Assist</a>
+			<div id="primary-navigation" class="navbar-links">
 				<a href="home.html" class="nav-link" aria-label="Go to Home">Home</a>
 				<a href="upload.html" class="nav-link" aria-label="Go to Upload">Upload</a>
 				<a href="detections.html" class="nav-link" aria-label="Go to Detections">Detections</a>
 				<a href="about.html" class="nav-link" aria-label="Go to About">About</a>
 			</div>
 			<div class="navbar-profile">
-				<a href="profile.html" class="nav-avatar">
+				<a href="profile.html" class="nav-avatar" aria-label="Go to Profile and Settings">
 					<span id="user-initials">...</span>
 				</a>
-				<button id="logout-button" class="button-logout">Logout</button>
+				<button id="logout-button" class="button-logout" aria-label="Logout">Logout</button>
 			</div>
 		</nav>
 	</header>
 
-	<main class="page-main-content">
-		<h1 class="page-title">About This Application</h1>
-		<div class="content-box" style="max-width: 800px; margin: 0 auto;">
-			<p>This application is a proof-of-concept for AI-powered object detection designed to assist visually impaired users.</p>
-			<p>It combines a powerful Python backend using FastAPI and YOLO models with a clear, accessible frontend to provide real-time audio feedback about objects detected in an uploaded video stream.</p>
-			<h3>How It Works</h3>
-			<ol>
-				<li><strong>Upload:</strong> A user uploads a video file from their device.</li>
-				<li><strong>Process:</strong> The backend server receives the video, processes it frame by frame using advanced YOLO object detection models.</li>
-				<li><strong>Summarize:</strong> The system identifies all unique objects and their counts (e.g., "2 people", "1 car", "3 traffic lights").</li>
-				<li><strong>Speak:</strong> The summary is converted into a natural-sounding audio description using a Text-to-Speech (TTS) engine.</li>
-				<li><strong>Result:</strong> The user receives both the text summary and an audio file they can play to understand their surroundings.</li>
-			</ol>
-		</div>
+	<main class="page-main-content about-page" role="main" aria-label="About AI Mobility Assist">
+		<section class="about-hero content-box" aria-describedby="about-intro">
+			<h1 class="page-title">AI Mobility Assist</h1>
+			<p id="about-intro" class="page-subtitle">An accessibility‑first, voice‑driven assistant that turns visual scenes into simple, spoken summaries for visually challenged persons.</p>
+			<div class="badge-row">
+				<span class="badge">Voice‑first</span>
+				<span class="badge">Multi‑language: English · Telugu · Hindi</span>
+				<span class="badge">Keyboard friendly</span>
+			</div>
+		</section>
+
+		<section class="stats-grid" aria-label="Highlights">
+			<div class="stat-card">
+				<div class="stat-icon" aria-hidden="true">🎯</div>
+				<h3>Accurate detections</h3>
+				<p>Built on YOLOv8 with domain add‑ons for traffic lights and zebra crossings.</p>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon" aria-hidden="true">🗣️</div>
+				<h3>Natural voice</h3>
+				<p>Clear, paced speech with adjustable rate and language preferences.</p>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon" aria-hidden="true">⌨️</div>
+				<h3>Accessible by design</h3>
+				<p>Strong focus outlines, ARIA labels, and robust keyboard flow.</p>
+			</div>
+		</section>
+
+		<section class="content-box feature-section" aria-label="Key features">
+			<h2 class="section-title">What you can do</h2>
+			<div class="feature-grid">
+				<div class="feature-card">
+					<h3>Upload & Detect</h3>
+					<ul>
+						<li>Upload videos for fast object detection.</li>
+						<li>See concise text summaries and play audio.</li>
+						<li>Progress with time left estimates.</li>
+					</ul>
+				</div>
+				<div class="feature-card">
+					<h3>Voice Commands</h3>
+					<ul>
+						<li>Say “go to upload”, “go to detections”, “go to profile”.</li>
+						<li>Smart filtering avoids false triggers from tips.</li>
+						<li>Conversational confirmations and prompts.</li>
+					</ul>
+				</div>
+				<div class="feature-card">
+					<h3>Personalized Audio</h3>
+					<ul>
+						<li>Choose language: English, Telugu, or Hindi.</li>
+						<li>Set your preferred speaking rate.</li>
+						<li>Compact or full voice tips on page load.</li>
+					</ul>
+				</div>
+				<div class="feature-card">
+					<h3>Accessible UI</h3>
+					<ul>
+						<li>Glassmorphism cards and high‑contrast text.</li>
+						<li>Responsive layout and mobile menu.</li>
+						<li>Reduced‑motion support for comfort.</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+
+
+		<section class="content-box" aria-label="Technology stack">
+			<h2 class="section-title">Under the hood</h2>
+			<ul class="tech-list">
+				<li><span class="chip">FastAPI</span> backend with async endpoints</li>
+				<li><span class="chip">YOLOv8</span> core model plus <span class="chip">traffic lights</span> and <span class="chip">zebra crossing</span> custom models</li>
+				<li><span class="chip">gTTS</span> for server‑side audio generation</li>
+				<li><span class="chip">Web Speech API</span> for in‑browser voice recognition and TTS</li>
+				<li><span class="chip">Vanilla JS</span> frontend with progressive enhancement</li>
+			</ul>
+		</section>
+
+		<section class="content-box" aria-label="Feedback">
+			<h2 class="section-title">Share feedback</h2>
+			<p>Got an idea to improve accessibility or accuracy? We’d love to hear it.</p>
+			<a class="button button-primary" href="feedback.html" aria-label="Go to feedback page">Send Feedback</a>
+		</section>
 	</main>
     
 	<script src="js/api.js"></script>

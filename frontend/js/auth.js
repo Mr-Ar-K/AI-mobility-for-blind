@@ -22,61 +22,76 @@
 	}
 })();
 
-// Global keyboard shortcuts for accessibility
-document.addEventListener('keydown', (e) => {
-	// Only trigger shortcuts with Alt key (to avoid conflicts with browser/form shortcuts)
-	if (!e.altKey) return;
+// Keyboard shortcuts removed per requirement: navigation via voice and UI only.
 
-	const key = e.key.toLowerCase();
-	
-	// Alt+H - Home
-	if (key === 'h') {
-		e.preventDefault();
-		window.location.href = 'home.html';
-		return;
+// Accessible mobile navbar toggle
+document.addEventListener('DOMContentLoaded', () => {
+	const toggle = document.querySelector('.navbar-toggle');
+	const navLinks = document.getElementById('primary-navigation');
+	if (!toggle || !navLinks) return;
+
+	// Create backdrop overlay for mobile menu
+	let backdrop = document.querySelector('.nav-backdrop');
+	if (!backdrop) {
+		backdrop = document.createElement('div');
+		backdrop.className = 'nav-backdrop';
+		document.body.appendChild(backdrop);
 	}
-	
-	// Alt+U - Upload
-	if (key === 'u') {
-		e.preventDefault();
-		window.location.href = 'upload.html';
-		return;
-	}
-	
-	// Alt+D - Detections
-	if (key === 'd') {
-		e.preventDefault();
-		window.location.href = 'detections.html';
-		return;
-	}
-	
-	// Alt+P - Profile
-	if (key === 'p') {
-		e.preventDefault();
-		window.location.href = 'profile.html';
-		return;
-	}
-	
-	// Alt+A - About
-	if (key === 'a') {
-		e.preventDefault();
-		window.location.href = 'about.html';
-		return;
-	}
-	
-	// Alt+F - Feedback
-	if (key === 'f') {
-		e.preventDefault();
-		window.location.href = 'feedback.html';
-		return;
-	}
-	
-	// Alt+L - Logout
-	if (key === 'l') {
-		e.preventDefault();
-		if (typeof handleLogout === 'function') {
-			handleLogout();
+
+	const closeMenu = () => {
+		navLinks.classList.remove('is-open');
+		toggle.setAttribute('aria-expanded', 'false');
+			backdrop.classList.remove('is-visible');
+	};
+
+	const openMenu = () => {
+		navLinks.classList.add('is-open');
+		toggle.setAttribute('aria-expanded', 'true');
+			backdrop.classList.add('is-visible');
+		// Move focus to first link for accessibility
+		const firstLink = navLinks.querySelector('.nav-link');
+		if (firstLink) firstLink.focus({ preventScroll: true });
+	};
+
+	const toggleMenu = () => {
+		const isOpen = navLinks.classList.contains('is-open');
+		if (isOpen) closeMenu(); else openMenu();
+	};
+
+	toggle.addEventListener('click', (e) => {
+		e.stopPropagation();
+		toggleMenu();
+	});
+
+	// Close when clicking a link inside the menu
+	navLinks.addEventListener('click', (e) => {
+		const target = e.target;
+		if (target && target.classList && target.classList.contains('nav-link')) {
+			closeMenu();
 		}
-		return;
-	}
+	});
+
+	// Close on outside click
+	document.addEventListener('click', (e) => {
+		const isClickInside = navLinks.contains(e.target) || toggle.contains(e.target);
+		if (!isClickInside) closeMenu();
+	});
+
+		// Close when clicking backdrop
+		backdrop.addEventListener('click', closeMenu);
+
+	// Close on Escape
+	document.addEventListener('keydown', (e) => {
+		if (e.key === 'Escape') closeMenu();
+	});
+
+	// Close when resizing to desktop
+	let lastWidth = window.innerWidth;
+	window.addEventListener('resize', () => {
+		const now = window.innerWidth;
+		if (lastWidth < 768 && now >= 768) {
+			closeMenu();
+		}
+		lastWidth = now;
+	});
 });

@@ -9,6 +9,22 @@ document.addEventListener('DOMContentLoaded', () => {
 	const progressStatus = document.getElementById('progress-status');
 	const progressMessage = document.getElementById('progress-message');
 	const progressTime = document.getElementById('progress-time');
+	const startDemoBtn = document.getElementById('start-demo');
+	const demoWrap = document.getElementById('live-demo-video-wrapper');
+	// Live Detection (Static Demo)
+	if (startDemoBtn && demoWrap) {
+		startDemoBtn.addEventListener('click', () => {
+			// If we had a sample video URL, we would set it here; keep static placeholder.
+			try { if (window.playTone) window.playTone('ping'); } catch(_) {}
+			const hint = document.createElement('div');
+			hint.style.color = '#ccc';
+			hint.style.fontSize = '0.9rem';
+			hint.style.padding = '12px';
+			hint.textContent = 'This is a static demo placeholder for live detection. Real-time processing can be integrated with a streaming endpoint.';
+			demoWrap.innerHTML = '';
+			demoWrap.appendChild(hint);
+		});
+	}
 
 	// Voice announcement function for accessibility
 	function announceProgress(message) {
@@ -74,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					if (prog.status === 'uploaded') announceProgress('Great! Your video has been uploaded successfully. Now analyzing the video to detect objects.');
 					if (prog.status === 'processing') announceProgress('I am now detecting objects in your video. This may take a few minutes. Please be patient.');
 					if (prog.status === 'completed') announceProgress('Excellent! Processing is complete. Your results are ready.');
+					try { if (window.playTone) window.playTone('ping'); } catch(_) {}
 					lastStatus = prog.status;
 				}
 				
@@ -104,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			progressTime.textContent = `Completed in ${totalTime}s`;
 			progressMessage.textContent = 'Video processed successfully';
 			announceProgress(`Fantastic! Processing completed in ${totalTime} seconds. Your detection video and audio summary are now available below. You can say play video to watch it, or say play audio to hear the summary. You can also say go to detections to view all your saved results.`);
+			try { if (window.playTone) window.playTone('success'); } catch(_) {}
 			setTimeout(() => { progressSection.style.display = 'none'; }, 5000);
 			// Reset announcement flags for next upload
 			window._announced25 = false;
