@@ -203,7 +203,8 @@ async function uploadVideo(file) {
 	formData.append('file', file); // 'file' must match the name in your FastAPI endpoint
 	const user = getUser();
 	if (!user) throw new Error('Not logged in');
-	const res = await fetchWithFallback(`/detect/${user.id}/with-audio`, {
+	const lang = (getAppSettings().language || 'en');
+	const res = await fetchWithFallback(`/detect/${user.id}/with-audio?lang=${encodeURIComponent(lang)}`, {
 		method: 'POST',
 		body: formData,
 	});
@@ -222,7 +223,8 @@ async function startDetection(file) {
 	formData.append('file', file);
 	const user = getUser();
 	if (!user) throw new Error('Not logged in');
-	const res = await fetchWithFallback(`/detect/${user.id}`, {
+	const lang = (getAppSettings().language || 'en');
+	const res = await fetchWithFallback(`/detect/${user.id}?lang=${encodeURIComponent(lang)}`, {
 		method: 'POST',
 		body: formData,
 	});
@@ -251,6 +253,11 @@ async function getHistory() {
 	const res = await fetchWithFallback(`/history/${user.id}`, { method: 'GET' });
 	if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || 'Failed to fetch history');
 	return res.json();
+}
+
+function getLanguage() {
+	const s = getAppSettings();
+	return s.language || 'en';
 }
 
 /** App-level settings stored in localStorage (e.g., audio rate) **/

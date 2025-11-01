@@ -205,7 +205,7 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
     return audio_log
 
 
-def run_detection_with_video(video_path: str, output_video_path: str, model_yolo: YOLO, model_lights: YOLO, model_zebra: YOLO) -> list[str]:
+def run_detection_with_video(video_path: str, output_video_path: str, model_yolo: YOLO, model_lights: YOLO, model_zebra: YOLO, on_progress=None) -> list[str]:
     """
     Processes a video file and creates an annotated output video with bounding boxes.
     Returns the same audio descriptions as run_detection().
@@ -409,8 +409,14 @@ def run_detection_with_video(video_path: str, output_video_path: str, model_yolo
             
             # Show progress every 30 frames
             if frame_count % 30 == 0:
-                progress = (frame_count / total_frames) * 100
+                progress = (frame_count / max(1,total_frames)) * 100
+                msg = f"Processing frame {frame_count}/{total_frames}"
                 print(f"Progress: {progress:.1f}% ({frame_count}/{total_frames} frames)")
+                try:
+                    if callable(on_progress):
+                        on_progress(progress, msg)
+                except Exception:
+                    pass
         
     except Exception as e:
         print(f"Error during video processing with annotation: {e}")

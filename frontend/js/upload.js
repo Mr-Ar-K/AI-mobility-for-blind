@@ -20,12 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
+	// Announce page load for blind users
+	announceProgress('Welcome to the upload page! To get started, please select a video file using the file input. Once selected, you can say upload video, and I will process it for you. This usually takes a few minutes depending on the video length. Say help anytime if you need assistance.');
+
 	uploadForm.addEventListener('submit', async (e) => {
 		e.preventDefault();
 
 		const file = videoInput.files[0];
 		if (!file) {
 			resultsContainer.innerHTML = '<p class="error-text">Please select a video file first.</p>';
+			announceProgress('Oops! I do not see any video file selected. Please use the file input to choose a video, then try again.');
 			return;
 		}
 
@@ -65,12 +69,24 @@ document.addEventListener('DOMContentLoaded', () => {
 				const elapsed = Math.floor((Date.now() - startTime) / 1000);
 				progressTime.textContent = `${elapsed}s elapsed`;
 
-				// Announce status changes
+				// Announce status changes with conversational feedback
 				if (prog.status && prog.status !== lastStatus) {
-					if (prog.status === 'uploaded') announceProgress('Video uploaded');
-					if (prog.status === 'processing') announceProgress('Detecting objects');
-					if (prog.status === 'completed') announceProgress('Processing complete');
+					if (prog.status === 'uploaded') announceProgress('Great! Your video has been uploaded successfully. Now analyzing the video to detect objects.');
+					if (prog.status === 'processing') announceProgress('I am now detecting objects in your video. This may take a few minutes. Please be patient.');
+					if (prog.status === 'completed') announceProgress('Excellent! Processing is complete. Your results are ready.');
 					lastStatus = prog.status;
+				}
+				
+				// Announce milestone percentages
+				if (pct >= 25 && pct < 50 && !window._announced25) {
+					announceProgress('Progress: 25 percent complete. Still working on it.');
+					window._announced25 = true;
+				} else if (pct >= 50 && pct < 75 && !window._announced50) {
+					announceProgress('Progress: 50 percent complete. Halfway there!');
+					window._announced50 = true;
+				} else if (pct >= 75 && pct < 100 && !window._announced75) {
+					announceProgress('Progress: 75 percent complete. Almost done!');
+					window._announced75 = true;
 				}
 
 				if (prog.status === 'completed' || prog.status === 'failed') {
@@ -87,8 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			progressStatus.textContent = 'PROCESSING COMPLETE!';
 			progressTime.textContent = `Completed in ${totalTime}s`;
 			progressMessage.textContent = 'Video processed successfully';
-			announceProgress(`Processing complete in ${totalTime} seconds. Results are ready.`);
+			announceProgress(`Fantastic! Processing completed in ${totalTime} seconds. Your detection video and audio summary are now available below. You can say play video to watch it, or say play audio to hear the summary. You can also say go to detections to view all your saved results.`);
 			setTimeout(() => { progressSection.style.display = 'none'; }, 5000);
+			// Reset announcement flags for next upload
+			window._announced25 = false;
+			window._announced50 = false;
+			window._announced75 = false;
 
 			resultsContainer.innerHTML = '';
 			// Results list (from latest history)
@@ -141,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			// Hide progress and show error
 			progressSection.style.display = 'none';
 			resultsContainer.innerHTML = `<p class="error-text">An error occurred: ${error.message}</p>`;
+			announceProgress(`I am sorry, but something went wrong. The error message is: ${error.message}. Please try again, or contact support if the problem persists.`);
 		} finally {
 			// Always re-enable the button
 			uploadButton.disabled = false;

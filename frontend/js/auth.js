@@ -21,3 +21,62 @@
 		window.location.href = 'home.html';
 	}
 })();
+
+// Global keyboard shortcuts for accessibility
+document.addEventListener('keydown', (e) => {
+	// Only trigger shortcuts with Alt key (to avoid conflicts with browser/form shortcuts)
+	if (!e.altKey) return;
+
+	const key = e.key.toLowerCase();
+	
+	// Alt+H - Home
+	if (key === 'h') {
+		e.preventDefault();
+		window.location.href = 'home.html';
+		return;
+	}
+	
+	// Alt+U - Upload
+	if (key === 'u') {
+		e.preventDefault();
+		window.location.href = 'upload.html';
+		return;
+	}
+	
+	// Alt+D - Detections
+	if (key === 'd') {
+		e.preventDefault();
+		window.location.href = 'detections.html';
+		return;
+	}
+	
+	// Alt+P - Profile
+	if (key === 'p') {
+		e.preventDefault();
+		window.location.href = 'profile.html';
+		return;
+	}
+	
+	// Alt+A - About
+	if (key === 'a') {
+		e.preventDefault();
+		window.location.href = 'about.html';
+		return;
+	}
+	
+	// Alt+F - Feedback
+	if (key === 'f') {
+		e.preventDefault();
+		window.location.href = 'feedback.html';
+		return;
+	}
+	
+	// Alt+L - Logout
+	if (key === 'l') {
+		e.preventDefault();
+		if (typeof handleLogout === 'function') {
+			handleLogout();
+		}
+		return;
+	}
+});

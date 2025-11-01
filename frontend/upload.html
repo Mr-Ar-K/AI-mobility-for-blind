@@ -12,16 +12,16 @@
         <nav class="navbar">
             <a href="home.html" class="navbar-brand">Object Detecto</a>
             <div class="navbar-links">
-                <a href="home.html" class="nav-link">Home</a>
-                <a href="upload.html" class="nav-link">Upload</a>
-                <a href="detections.html" class="nav-link">Detections</a>
-                <a href="about.html" class="nav-link">About</a>
+                <a href="home.html" class="nav-link" aria-label="Go to Home">Home</a>
+                <a href="upload.html" class="nav-link" aria-label="Go to Upload">Upload</a>
+                <a href="detections.html" class="nav-link" aria-label="Go to Detections">Detections</a>
+                <a href="about.html" class="nav-link" aria-label="Go to About">About</a>
             </div>
             <div class="navbar-profile">
-                <a href="profile.html" class="nav-avatar">
+                <a href="profile.html" class="nav-avatar" aria-label="Go to Profile and Settings">
                     <span id="user-initials">...</span>
                 </a>
-                <button id="logout-button" class="button-logout">Logout</button>
+                <button id="logout-button" class="button-logout" aria-label="Logout">Logout</button>
             </div>
         </nav>
     </header>
@@ -31,23 +31,29 @@
         <p class="page-subtitle">Upload a video file to detect objects.</p>
         
         <div class="content-box" style="max-width: 700px; margin: 0 auto;">
-            <form id="upload-form" class="form-layout">
+            <form id="upload-form" class="form-layout" aria-label="Video upload form">
                 <div class="form-group">
                     <label for="video-input">Video File</label>
-                    <input id="video-input" type="file" accept="video/*" required class="input-field">
+                    <input id="video-input" type="file" accept="video/*" required class="input-field" 
+                           aria-label="Select video file for object detection" 
+                           aria-describedby="video-hint">
+                    <small id="video-hint" class="helper-text">Accepts .mp4, .avi, .mov, and other video formats</small>
                 </div>
-                <button id="upload-button" type="submit" class="button button-primary button-full-width">
+                <button id="upload-button" type="submit" class="button button-primary button-full-width"
+                        aria-label="Upload and process selected video">
                     Upload and Process Video
                 </button>
             </form>
 
             <!-- Progress Section -->
-            <div id="progress-section" style="display: none; margin-top: 20px;">
+            <div id="progress-section" style="display: none; margin-top: 20px;" 
+                 role="status" aria-live="polite" aria-label="Processing progress">
                 <div style="margin-bottom: 10px;">
                     <strong id="progress-status">Processing...</strong>
                     <span id="progress-time" style="float: right; color: #666;"></span>
                 </div>
-                <div style="width: 100%; height: 30px; background-color: #e0e0e0; border-radius: 15px; overflow: hidden;">
+                <div style="width: 100%; height: 30px; background-color: #e0e0e0; border-radius: 15px; overflow: hidden;"
+                     role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                     <div id="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
                         <span id="progress-percent">0%</span>
                     </div>
@@ -55,7 +61,7 @@
                 <div id="progress-message" style="margin-top: 10px; color: #666; font-size: 14px;"></div>
             </div>
 
-            <div id="results-container" class="results-container">
+            <div id="results-container" class="results-container" aria-live="polite" aria-label="Detection results">
                 </div>
         </div>
     </main>
@@ -63,5 +69,6 @@
     <script src="js/api.js"></script>
     <script src="js/upload.js"></script>
     <script src="js/voice.js"></script>
+    <script src="js/help.js"></script>
 </body>
 </html>

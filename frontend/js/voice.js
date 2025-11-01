@@ -124,16 +124,18 @@
     wrap.style.cssText = `
       position: fixed;
       left: 20px;
-      bottom: 90px;
+      bottom: 30px;
       z-index: 9998;
-      background: rgba(0,0,0,0.75);
+      background: rgba(0,0,0,0.7);
       color: #fff;
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-radius: 10px;
-      max-width: 320px;
-      font-size: 12px;
+      max-width: 300px;
+      font-size: 11px;
       line-height: 1.4;
       box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      opacity: 0.6;
+      transition: opacity 0.3s ease;
     `;
     const title = document.createElement('div');
     title.textContent = 'Voice tips:';
@@ -148,6 +150,93 @@
     wrap.appendChild(title);
     wrap.appendChild(list);
     document.body.appendChild(wrap);
+    setTimeout(() => { try { wrap.style.display = 'none'; } catch(_) {} }, 12000);
+  }
+  function getAppSettingsLocal() {
+    try {
+      if (typeof window.getAppSettings === 'function') return window.getAppSettings();
+      return JSON.parse(localStorage.getItem('app_settings') || '{}') || {};
+    } catch(_) { return {}; }
+  }
+
+  function createCompactTips() {
+    // Remove existing
+    const existing = on('#voice-tips-icon');
+    if (existing) existing.remove();
+
+    const icon = document.createElement('button');
+    icon.id = 'voice-tips-icon';
+    icon.setAttribute('aria-label', 'Show voice tips');
+    icon.style.cssText = `
+      position: fixed;
+      left: 20px;
+      bottom: 30px;
+      z-index: 9998;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      display: flex; align-items: center; justify-content: center;
+    `;
+    icon.textContent = '❔';
+
+    const pop = document.createElement('div');
+    pop.id = 'voice-tips-popover';
+    pop.style.cssText = `
+      position: fixed;
+      left: 66px;
+      bottom: 30px;
+      z-index: 9998;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      max-width: 320px;
+      font-size: 12px;
+      line-height: 1.4;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      display: none;
+    `;
+    const title = document.createElement('div');
+    title.textContent = 'Voice tips';
+    title.style.cssText = 'font-weight:700; margin-bottom:6px;';
+    const list = document.createElement('ul');
+    list.style.cssText = 'margin:0; padding-left:18px;';
+    const tips = tipsForPath(window.location.pathname);
+    tips.slice(0,5).forEach(t => { const li = document.createElement('li'); li.textContent = t; list.appendChild(li); });
+    pop.appendChild(title); pop.appendChild(list);
+
+    let visible = false;
+    function togglePopover() {
+      visible = !visible;
+      pop.style.display = visible ? 'block' : 'none';
+    }
+    icon.addEventListener('click', togglePopover);
+    document.addEventListener('click', (e) => {
+      if (visible && e.target !== icon && !pop.contains(e.target)) {
+        visible = false; pop.style.display = 'none';
+      }
+    });
+
+    document.body.appendChild(icon);
+    document.body.appendChild(pop);
+  }
+
+  function initTipsUI() {
+    const s = getAppSettingsLocal();
+    const show = (s.showVoiceTips !== false); // default true
+    const compact = (s.compactVoiceTips === true); // default false
+    if (compact) {
+      // Compact mode: show icon; only expand on click
+      createCompactTips();
+      // If show=true, we keep just the icon (still compact)
+    } else if (show) {
+      // Full banner
+      createTipsBanner();
+    }
   }
 
   function showHeard(text) {
@@ -176,49 +265,101 @@
   }
 
   function handleCommonCommands(cmd) {
-    // Navigation
-    if (/go (to )?home|open home/.test(cmd)) { speak('Opening home'); go('home.html'); return true; }
-    if (/go (to )?upload|open upload/.test(cmd)) { speak('Opening upload'); go('upload.html'); return true; }
-    if (/go (to )?detection|open detection|go (to )?detections|open detections/.test(cmd)) { speak('Opening detections'); go('detections.html'); return true; }
-    if (/go (to )?about|open about/.test(cmd)) { speak('Opening about'); go('about.html'); return true; }
-    if (/go (to )?profile|open profile/.test(cmd)) { speak('Opening profile'); go('profile.html'); return true; }
-    if (/go (to )?settings|open settings/.test(cmd)) { speak('Opening settings'); go('settings.html'); return true; }
-    if (/go (to )?feedback|open feedback/.test(cmd)) { speak('Opening feedback'); go('feedback.html'); return true; }
-    if (/go (to )?login|open login/.test(cmd)) { speak('Opening login'); go('login.html'); return true; }
-    if (/go (to )?register|open register|sign up|create account/.test(cmd)) { speak('Opening register'); go('register.html'); return true; }
+    // Help command
+    if (/help|what can i say|what commands/.test(cmd)) {
+      const tips = tipsForPath(window.location.pathname);
+      speak('Here are some commands you can use. ' + tips.slice(0, 3).join('. ') + '. Say help again for more options.');
+      return true;
+    }
     
-    // Logout
-    if (/logout|log out|sign out/.test(cmd)) { try { handleLogout(); } catch(_) {} speak('Logging out'); return true; }
+    // Navigation with conversational responses
+    if (/go (to )?home|open home/.test(cmd)) { speak('Taking you to the home page where you can access all features.'); go('home.html'); return true; }
+    if (/go (to )?upload|open upload/.test(cmd)) { speak('Opening upload page. You can select and process a video file there.'); go('upload.html'); return true; }
+    if (/go (to )?detection|open detection|go (to )?detections|open detections/.test(cmd)) { speak('Opening your detections history. You can review all your processed videos there.'); go('detections.html'); return true; }
+    if (/go (to )?about|open about/.test(cmd)) { speak('Opening about page. Learn how this application works.'); go('about.html'); return true; }
+    if (/go (to )?profile|open profile/.test(cmd)) { speak('Opening your profile and settings page. You can update your information and preferences there.'); go('profile.html'); return true; }
+    if (/go (to )?settings|open settings/.test(cmd)) { speak('Opening settings. Settings are now in your profile page.'); go('profile.html'); return true; }
+    if (/go (to )?feedback|open feedback/.test(cmd)) { speak('Opening feedback page. We would love to hear your thoughts.'); go('feedback.html'); return true; }
+    if (/go (to )?login|open login/.test(cmd)) { speak('Opening login page'); go('login.html'); return true; }
+    if (/go (to )?register|open register|sign up|create account/.test(cmd)) { speak('Opening registration page. Create a new account to get started.'); go('register.html'); return true; }
     
-    // Playback controls (generic)
+    // Logout with confirmation
+    if (/logout|log out|sign out/.test(cmd)) { 
+      speak('Logging you out. Have a great day!'); 
+      setTimeout(() => { try { handleLogout(); } catch(_) {} }, 1000);
+      return true; 
+    }
+    
+    // Playback controls (generic) - with conversational feedback
     if (/play audio|play (the )?summary/.test(cmd)) {
-      const a = on('audio'); if (a) { a.play(); speak('Playing'); } else { speak('No audio found'); }
+      const a = on('audio'); 
+      if (a) { 
+        a.play(); 
+        speak('Playing audio summary. Say pause audio to stop, or say faster or slower to adjust speed.'); 
+      } else { 
+        speak('Sorry, I could not find any audio on this page. Please process a video first to generate audio.'); 
+      }
       return true;
     }
-    if (/pause audio|pause/.test(cmd)) {
-      const a = on('audio'); if (a) { a.pause(); speak('Paused'); } else { speak('No audio found'); }
+    if (/pause audio|stop audio|pause/.test(cmd)) {
+      const a = on('audio'); 
+      if (a) { 
+        a.pause(); 
+        speak('Audio paused. Say play audio to resume.'); 
+      } else { 
+        speak('No audio is currently playing.'); 
+      }
       return true;
     }
-    if (/(increase|faster) audio speed/.test(cmd)) {
+    if (/(increase|faster|speed up) audio( speed)?/.test(cmd)) {
       const audios = onAll('audio');
-      if (audios.length) { audios.forEach(a => a.playbackRate = Math.min(2.0, (a.playbackRate || 1) + 0.2)); speak('Faster'); }
-      else { speak('No audio found'); }
+      if (audios.length) { 
+        audios.forEach(a => a.playbackRate = Math.min(2.0, (a.playbackRate || 1) + 0.2)); 
+        const newRate = audios[0].playbackRate.toFixed(1);
+        speak(`Audio speed increased to ${newRate} times. Say slower to decrease, or reset speed for normal.`); 
+      }
+      else { speak('No audio found on this page.'); }
       return true;
     }
-    if (/(decrease|slower) audio speed/.test(cmd)) {
+    if (/(decrease|slower|slow down) audio( speed)?/.test(cmd)) {
       const audios = onAll('audio');
-      if (audios.length) { audios.forEach(a => a.playbackRate = Math.max(0.5, (a.playbackRate || 1) - 0.2)); speak('Slower'); }
-      else { speak('No audio found'); }
+      if (audios.length) { 
+        audios.forEach(a => a.playbackRate = Math.max(0.5, (a.playbackRate || 1) - 0.2)); 
+        const newRate = audios[0].playbackRate.toFixed(1);
+        speak(`Audio speed decreased to ${newRate} times. Say faster to increase.`); 
+      }
+      else { speak('No audio found on this page.'); }
       return true;
     }
-    if (/reset audio speed/.test(cmd)) {
+    if (/reset audio speed|normal speed/.test(cmd)) {
       const audios = onAll('audio');
-      if (audios.length) { audios.forEach(a => a.playbackRate = 1.0); speak('Normal speed'); }
-      else { speak('No audio found'); }
+      if (audios.length) { 
+        audios.forEach(a => a.playbackRate = 1.0); 
+        speak('Audio speed reset to normal. Say faster or slower to adjust.'); 
+      }
+      else { speak('No audio found on this page.'); }
       return true;
     }
-    if (/mute audio/.test(cmd)) { const a = on('audio'); if (a) { a.muted = true; speak('Muted'); } else { speak('No audio found'); } return true; }
-    if (/unmute audio/.test(cmd)) { const a = on('audio'); if (a) { a.muted = false; speak('Unmuted'); } else { speak('No audio found'); } return true; }
+    if (/mute audio/.test(cmd)) { 
+      const a = on('audio'); 
+      if (a) { 
+        a.muted = true; 
+        speak('Audio muted. Say unmute audio to hear it again.'); 
+      } else { 
+        speak('No audio found.'); 
+      } 
+      return true; 
+    }
+    if (/unmute audio/.test(cmd)) { 
+      const a = on('audio'); 
+      if (a) { 
+        a.muted = false; 
+        speak('Audio unmuted. You should hear it now.'); 
+      } else { 
+        speak('No audio found.'); 
+      } 
+      return true; 
+    }
     // Play nth audio: "play first|second|third audio" or "play audio number 2"
     const nthMap = { first:1, second:2, third:3, fourth:4, fifth:5 };
     const nthMatch = cmd.match(/play (the )?(\w+) audio|play audio number (\d+)/);
@@ -247,15 +388,25 @@
     if (/email (is|at) (.+)/.test(cmd) && idEl) {
       const m = cmd.match(/email (is|at) (.+)/);
       idEl.value = (m && m[2]) ? m[2].replace(/\s+at\s+/g,'@').replace(/\s+dot\s+/g,'.').replace(/\s/g,'') : idEl.value;
-      speak('Email set'); return true;
+      speak('Email set. Now say: password is, followed by your password. Or say login to proceed.'); 
+      return true;
     }
-    if (/username (is|equals) (.+)/.test(cmd) && idEl) { idEl.value = cmd.match(/username (is|equals) (.+)/)[2]; speak('Username set'); return true; }
+    if (/username (is|equals) (.+)/.test(cmd) && idEl) { 
+      idEl.value = cmd.match(/username (is|equals) (.+)/)[2]; 
+      speak('Username set. Now say: password is, followed by your password.'); 
+      return true; 
+    }
     if (/password (is|equals) (.+)/.test(cmd) && passEl) {
       const m = cmd.match(/password (is|equals) (.+)/);
       passEl.value = m && m[2] ? m[2] : passEl.value;
-      speak('Password set'); return true;
+      speak('Password set. Say login to sign in, or say email is to change your email.'); 
+      return true;
     }
-    if (/(log in|login|sign in|submit)/.test(cmd) && form) { form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); speak('Logging in'); return true; }
+    if (/(log in|login|sign in|submit)/.test(cmd) && form) { 
+      form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); 
+      speak('Logging you in. Please wait.'); 
+      return true; 
+    }
     return false;
   }
 
@@ -264,14 +415,27 @@
     const emailEl = on('#email');
     const passEl = on('#password');
     const form = on('#register-form');
-    if (/username (is|equals) (.+)/.test(cmd) && usernameEl) { usernameEl.value = cmd.match(/username (is|equals) (.+)/)[2]; speak('Username set'); return true; }
+    if (/username (is|equals) (.+)/.test(cmd) && usernameEl) { 
+      usernameEl.value = cmd.match(/username (is|equals) (.+)/)[2]; 
+      speak('Username set. Now say: email is, followed by your email address.'); 
+      return true; 
+    }
     if (/email (is|at) (.+)/.test(cmd) && emailEl) {
       const m = cmd.match(/email (is|at) (.+)/);
       emailEl.value = (m && m[2]) ? m[2].replace(/\s+at\s+/g,'@').replace(/\s+dot\s+/g,'.').replace(/\s/g,'') : emailEl.value;
-      speak('Email set'); return true;
+      speak('Email set. Now say: password is, followed by your desired password.'); 
+      return true;
     }
-    if (/password (is|equals) (.+)/.test(cmd) && passEl) { passEl.value = cmd.match(/password (is|equals) (.+)/)[2]; speak('Password set'); return true; }
-    if (/(create account|register|sign up|submit)/.test(cmd) && form) { form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); speak('Creating account'); return true; }
+    if (/password (is|equals) (.+)/.test(cmd) && passEl) { 
+      passEl.value = cmd.match(/password (is|equals) (.+)/)[2]; 
+      speak('Password set. Say register or create account to complete your registration.'); 
+      return true; 
+    }
+    if (/(create account|register|sign up|submit)/.test(cmd) && form) { 
+      form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); 
+      speak('Creating your account. Please wait a moment.'); 
+      return true; 
+    }
     return false;
   }
 
@@ -285,10 +449,20 @@
     const fileEl = on('#video-input');
     if (/(upload|process) (video|file)|submit/.test(cmd)) {
       if (fileEl && fileEl.files && fileEl.files.length > 0) {
+        const fileName = fileEl.files[0].name;
         form && form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true}));
-        speak('Uploading and processing your video');
+        speak(`Uploading and processing ${fileName}. This may take a few minutes. I will keep you updated on the progress.`);
       } else {
-        speak('Please select a video file first. For security reasons, the browser does not allow voice selection of files.');
+        speak('I do not see any video file selected yet. Please use the file input to select a video, then say upload video again. For security reasons, I cannot select files using voice commands.');
+      }
+      return true;
+    }
+    if (/what (file|video)|which (file|video)|selected/.test(cmd)) {
+      if (fileEl && fileEl.files && fileEl.files.length > 0) {
+        const fileName = fileEl.files[0].name;
+        speak(`You have selected ${fileName}. Say upload video to process it.`);
+      } else {
+        speak('No video file is currently selected. Please choose a file first.');
       }
       return true;
     }
@@ -296,13 +470,33 @@
   }
 
   function handleDetectionsCommands(cmd) {
-    // Video controls
-    if (/play video|play (the )?first video/.test(cmd)) {
-      const v = on('video'); if (v) { v.play(); speak('Playing video'); } else { speak('No video found'); }
+    // Count videos and audios
+    if (/how many|count|list/.test(cmd)) {
+      const videos = onAll('video');
+      const audios = onAll('audio');
+      speak(`You have ${videos.length} detection ${videos.length === 1 ? 'video' : 'videos'} and ${audios.length} audio ${audios.length === 1 ? 'summary' : 'summaries'}. Say play first video or play first audio to review them.`);
       return true;
     }
-    if (/pause video/.test(cmd)) {
-      const v = on('video'); if (v) { v.pause(); speak('Paused'); } else { speak('No video found'); }
+    
+    // Video controls with conversational feedback
+    if (/play video|play (the )?first video/.test(cmd)) {
+      const v = on('video'); 
+      if (v) { 
+        v.play(); 
+        speak('Playing your detection video. Say pause video to stop, or play audio to hear the summary.'); 
+      } else { 
+        speak('Sorry, I could not find any videos. You might not have any detections yet. Say go to upload to process a new video.'); 
+      }
+      return true;
+    }
+    if (/pause video|stop video/.test(cmd)) {
+      const v = on('video'); 
+      if (v) { 
+        v.pause(); 
+        speak('Video paused. Say play video to resume.'); 
+      } else { 
+        speak('No video is currently playing.'); 
+      }
       return true;
     }
     // Play nth video: "play second video" or "play video number 2"
@@ -313,8 +507,14 @@
       if (videoMatch[2] && nthMap[videoMatch[2]]) idx = nthMap[videoMatch[2]] - 1;
       if (videoMatch[3]) idx = parseInt(videoMatch[3], 10) - 1;
       const videos = onAll('video');
-      if (idx != null && videos[idx]) { videos[idx].play(); speak('Playing video'); return true; }
-      speak('Video not found'); return true;
+      if (idx != null && videos[idx]) { 
+        videos[idx].play(); 
+        const position = videoMatch[2] || `number ${videoMatch[3]}`;
+        speak(`Playing ${position} video. Say pause video to stop.`); 
+        return true; 
+      }
+      speak(`Sorry, I could not find that video. You have ${videos.length} ${videos.length === 1 ? 'video' : 'videos'} available.`); 
+      return true;
     }
     // Covered by common audio commands
     return false;
@@ -323,16 +523,48 @@
   function handleProfileCommands(cmd) {
     const usernameEl = on('#username');
     const form = on('#profile-form');
-    if (/username (is|equals) (.+)/.test(cmd) && usernameEl) { usernameEl.value = cmd.match(/username (is|equals) (.+)/)[2]; speak('Username set'); return true; }
-    if (/(update profile|save profile|submit)/.test(cmd) && form) { form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); speak('Updating profile'); return true; }
+    const langSelect = on('#language-select');
+    const speedSelect = on('#audio-speed-select');
+    
+    if (/username (is|equals) (.+)/.test(cmd) && usernameEl) { 
+      const newName = cmd.match(/username (is|equals) (.+)/)[2];
+      usernameEl.value = newName; 
+      speak(`Username changed to ${newName}. Say save profile to keep this change, or continue editing your settings.`); 
+      return true; 
+    }
+    if (/(update profile|save (profile|settings)|save all|submit)/.test(cmd) && form) { 
+      form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); 
+      speak('Saving your profile and settings. Please wait.'); 
+      return true; 
+    }
+    if (/what (is )?my (settings|language|speed)/.test(cmd)) {
+      const lang = langSelect ? langSelect.options[langSelect.selectedIndex].text : 'unknown';
+      const speed = speedSelect ? speedSelect.value : 'unknown';
+      speak(`Your current audio language is ${lang}, and audio speed is ${speed} times normal. Say save settings to keep changes, or say change language to update.`);
+      return true;
+    }
     return false;
   }
 
   function handleFeedbackCommands(cmd) {
     const textEl = on('#feedback-form #feedback-text');
     const form = on('#feedback-form');
-    if (/feedback (is|equals) (.+)/.test(cmd) && textEl) { textEl.value = cmd.match(/feedback (is|equals) (.+)/)[2]; speak('Feedback set'); return true; }
-    if (/(submit feedback|send feedback|submit)/.test(cmd) && form) { form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); speak('Submitting feedback'); return true; }
+    if (/feedback (is|equals) (.+)/.test(cmd) && textEl) { 
+      const feedbackText = cmd.match(/feedback (is|equals) (.+)/)[2];
+      textEl.value = feedbackText; 
+      speak('Got it. Your feedback has been entered. Say submit feedback to send it to us, or continue speaking to add more.'); 
+      return true; 
+    }
+    if (/(submit feedback|send feedback|submit)/.test(cmd) && form) { 
+      form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); 
+      speak('Thank you for your feedback! Submitting it now. Your input helps us improve.'); 
+      return true; 
+    }
+    if (/clear feedback|delete feedback|start over/.test(cmd) && textEl) {
+      textEl.value = '';
+      speak('Feedback cleared. You can start over. Say feedback is, followed by your message.');
+      return true;
+    }
     return false;
   }
 
@@ -343,10 +575,13 @@
       const lang = cmd.match(/set language (.+)/)[1].trim();
       for (const opt of select.options) {
         if (opt.text.toLowerCase() === lang || opt.value.toLowerCase() === lang) {
-          select.value = opt.value; speak('Language set to ' + opt.text); return true;
+          select.value = opt.value; 
+          speak(`Language changed to ${opt.text}. This will affect your audio summaries. Say save settings to apply this change.`); 
+          return true;
         }
       }
-      speak('Language not found'); return true;
+      speak('Sorry, I could not find that language. Available languages are English, Telugu, and Hindi. Please try again.'); 
+      return true;
     }
     // Example: "set audio speed 1.3" or "set audio speed to 1.5"
     const audioSelect = on('#audio-speed-select');
@@ -354,30 +589,41 @@
     if (m && audioSelect) {
       const rate = m[1];
       for (const opt of audioSelect.options) {
-        if (opt.value === rate) { audioSelect.value = rate; speak('Audio speed set to ' + rate + ' x'); return true; }
+        if (opt.value === rate) { 
+          audioSelect.value = rate; 
+          speak(`Audio speed set to ${rate} times normal. Say save settings to keep this change, or try a different speed.`); 
+          return true; 
+        }
       }
-      speak('Requested audio speed not available'); return true;
+      speak(`Sorry, ${rate} is not available. Available speeds are 0.8, 1.0, 1.3, 1.5, 1.8, and 2.0. Please choose one of these.`); 
+      return true;
     }
-    const form = on('#settings-form');
-    if (/(save settings|submit)/.test(cmd) && form) { form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); speak('Saving settings'); return true; }
+    const form = on('#settings-form') || on('#profile-form');
+    if (/(save settings|save all|submit)/.test(cmd) && form) { 
+      form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true})); 
+      speak('Saving all your settings. Your preferences will be applied immediately.'); 
+      return true; 
+    }
     return false;
   }
 
   function routeCommand(cmd) {
     cmd = cmd.toLowerCase().trim();
-    if (!cmd) return;
-    if (handleCommonCommands(cmd)) return;
+    if (!cmd) return false;
+    if (handleCommonCommands(cmd)) return true;
 
     const path = window.location.pathname;
-    if (path.endsWith('/index.html') || path.endsWith('/') ) { if (handleIndexCommands(cmd)) return; }
-    if (path.endsWith('/login.html')) { if (handleLoginCommands(cmd)) return; }
-    if (path.endsWith('/register.html')) { if (handleRegisterCommands(cmd)) return; }
-    if (path.endsWith('/home.html')) { if (handleHomeCommands(cmd)) return; }
-    if (path.endsWith('/upload.html')) { if (handleUploadCommands(cmd)) return; }
-    if (path.endsWith('/detections.html')) { if (handleDetectionsCommands(cmd)) return; }
-    if (path.endsWith('/profile.html')) { if (handleProfileCommands(cmd)) return; }
-    if (path.endsWith('/feedback.html')) { if (handleFeedbackCommands(cmd)) return; }
-    if (path.endsWith('/settings.html')) { if (handleSettingsCommands(cmd)) return; }
+    if (path.endsWith('/index.html') || path.endsWith('/') ) { if (handleIndexCommands(cmd)) return true; }
+    if (path.endsWith('/login.html')) { if (handleLoginCommands(cmd)) return true; }
+    if (path.endsWith('/register.html')) { if (handleRegisterCommands(cmd)) return true; }
+    if (path.endsWith('/home.html')) { if (handleHomeCommands(cmd)) return true; }
+    if (path.endsWith('/upload.html')) { if (handleUploadCommands(cmd)) return true; }
+    if (path.endsWith('/detections.html')) { if (handleDetectionsCommands(cmd)) return true; }
+    if (path.endsWith('/profile.html')) { if (handleProfileCommands(cmd)) return true; }
+    if (path.endsWith('/feedback.html')) { if (handleFeedbackCommands(cmd)) return true; }
+    if (path.endsWith('/settings.html')) { if (handleSettingsCommands(cmd)) return true; }
+    
+    return false; // Command not handled
   }
 
   let isListening = false;
@@ -386,12 +632,39 @@
   recognition.onresult = (e) => {
     const result = e.results[e.results.length - 1];
     if (result.isFinal) {
-      const transcript = result[0].transcript.toLowerCase();
+      const transcript = result[0].transcript.toLowerCase().trim();
       console.log('Voice command detected:', transcript);
       showHeard(transcript);
-      routeCommand(transcript);
+      
+      // Filter out non-command phrases (voice tips content, general speech)
+      if (isLikelyCommand(transcript)) {
+        const handled = routeCommand(transcript);
+        if (!handled) {
+          speak('I did not understand that command. Could you please repeat? Or say help to hear what I can do for you.');
+        }
+      } else {
+        console.log('Ignored non-command speech:', transcript);
+        // Occasionally prompt the user if they seem to be talking but not giving commands
+        if (Math.random() < 0.3) {
+          speak('I am listening. Say help if you need to know what I can do.');
+        }
+      }
+      
+      try { resetInactivityTimer(); } catch(_) {}
     }
   };
+
+  // Check if transcript looks like a command (starts with known keywords)
+  function isLikelyCommand(text) {
+    const commandKeywords = [
+      'go', 'open', 'login', 'logout', 'register', 'sign',
+      'play', 'pause', 'upload', 'submit', 'save', 'update',
+      'email', 'username', 'password', 'feedback', 'language',
+      'audio', 'speed', 'mute', 'unmute', 'faster', 'slower', 'reset',
+      'first', 'second', 'third', 'fourth', 'fifth', 'video', 'detection'
+    ];
+    return commandKeywords.some(kw => text.includes(kw));
+  }
   
   recognition.onerror = (e) => {
     console.error('Speech recognition error:', e.error);
@@ -409,16 +682,29 @@
     }
   };
 
+  // Inactivity timeout: auto-stop listening after a period without final results
+  let inactivityTimer = null;
+  function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+      if (recognitionActive) {
+        stopListening();
+        speak('Voice control timed out. Click anywhere to reactivate.');
+      }
+    }, 90000);
+  }
+
   function startListening() {
     if (!recognitionActive) {
       recognitionActive = true;
       try { 
         recognition.start(); 
-        speak('Voice control activated. You can now speak commands.');
+        speak('Hello! I am listening. What would you like to do? Say help to hear available commands.');
         console.log('Voice recognition started');
       } catch(e) {
         console.error('Failed to start recognition:', e);
       }
+      try { resetInactivityTimer(); } catch(_) {}
     }
   }
 
@@ -426,15 +712,16 @@
     recognitionActive = false;
     try { 
       recognition.stop(); 
-      speak('Voice control deactivated.');
+      speak('Voice control turned off. Click anywhere to talk to me again.');
       console.log('Voice recognition stopped');
     } catch(_) {}
+    try { clearTimeout(inactivityTimer); } catch(_) {}
   }
 
   // Activate voice commands when user clicks anywhere on the page
   document.addEventListener('DOMContentLoaded', () => {
-    // Build contextual tips on load
-    createTipsBanner();
+  // Build contextual tips per settings
+  initTipsUI();
 
     // Create a visible button for voice activation
     const voiceButton = document.createElement('button');

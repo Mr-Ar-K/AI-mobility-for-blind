@@ -2,16 +2,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const listContainer = document.getElementById('detections-list');
 	listContainer.innerHTML = '<p>Loading detection history...</p>';
 
+	// Voice announcement function
+	function announce(message) {
+		if ('speechSynthesis' in window) {
+			const utterance = new SpeechSynthesisUtterance(message);
+			utterance.rate = 1.2;
+			utterance.volume = 0.8;
+			window.speechSynthesis.speak(utterance);
+		}
+	}
+
 	try {
 		const history = await getHistory(); // from api.js
 
 		if (!history || history.length === 0) {
 			listContainer.innerHTML = '<p>You have no saved detections.</p>';
+			announce('Welcome to your detections history! You do not have any saved detections yet. Would you like to upload a video? Just say go to upload, and I will take you there to process your first video.');
 			return;
 		}
 
 		// Clear loading message
 		listContainer.innerHTML = '';
+		
+		// Announce page load with count
+		announce(`Welcome to your detections history! You have ${history.length} saved ${history.length === 1 ? 'detection' : 'detections'}. You can say play first video to watch the detection video, or say play first audio to hear the summary. You can also say how many to get a count, or say go to upload to process a new video.`);
 
 		// Debug: log what we received
 		console.log('Detection history:', history);

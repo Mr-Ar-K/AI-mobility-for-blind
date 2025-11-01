@@ -31,10 +31,12 @@
 		<div class="content-box" style="max-width: 700px; margin: 0 auto;">
 			<form id="settings-form" class="form-layout">
 				<div class="form-group">
-					<label for="language-select">Language</label>
+					<label for="language-select">Audio Language</label>
 					<select id="language-select" class="input-field">
-						<option value="en">English</option>
-						</select>
+						<option value="en" selected>English</option>
+						<option value="te">Telugu</option>
+						<option value="hi">Hindi</option>
+					</select>
 				</div>
 
 				<div class="form-group">
@@ -48,6 +50,16 @@
 						<option value="1.8">1.8x</option>
 						<option value="2.0">2.0x</option>
 					</select>
+				</div>
+
+				<div class="form-group" style="display:flex; gap:16px; align-items:center;">
+					<input type="checkbox" id="show-voice-tips" />
+					<label for="show-voice-tips" style="margin:0;">Show voice tips on page load</label>
+				</div>
+
+				<div class="form-group" style="display:flex; gap:16px; align-items:center;">
+					<input type="checkbox" id="compact-voice-tips" />
+					<label for="compact-voice-tips" style="margin:0;">Compact voice tips (icon expands on click)</label>
 				</div>
                 
 				<div id="message-text" class="error-text"></div>

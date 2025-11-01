@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List, Dict
+from typing import List, Dict, Optional
 from ultralytics import YOLO
 from starlette.concurrency import run_in_threadpool
 
@@ -83,7 +83,8 @@ async def detect_video(
     user_id: int,
     request: Request,
     file: UploadFile = File(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    lang: Optional[str] = 'en'
 ):
     # Get all three models from app state
     model_yolo = request.app.state.model_yolo
@@ -150,13 +151,23 @@ async def detect_video(
     try:
         # Limit concurrent processing to avoid CPU overload
         async with request.app.state.semaphore:
+            # Progress callback to update frontend more frequently
+            def report_progress(pct: float, message: str = None):
+                progress_store[task_id] = {
+                    "status": "processing",
+                    "progress": max(0, min(100, int(pct))),
+                    "message": message or "Processing video...",
+                    "estimated_time": None
+                }
+
             audio_results_list = await run_in_threadpool(
                 video_processor.run_detection_with_video,
                 temp_video_path,
                 saved_video_path,
                 model_yolo,
                 model_lights,
-                model_zebra
+                model_zebra,
+                report_progress
             )
         detection_time = time.time() - detection_start
         print(f"Detection completed in {detection_time:.2f} seconds")
@@ -189,7 +200,7 @@ async def detect_video(
     audio_start = time.time()
     try:
         # Speed up audio generation with shorter pauses
-        generator = audio_generator.AudioGenerator(pause_duration=250)
+        generator = audio_generator.AudioGenerator(language=lang or 'en', pause_duration=250)
         temp_audio_path = generator.generate_audio_quick(audio_results_list)
         
         # Move audio to permanent storage
@@ -243,7 +254,8 @@ async def detect_video_with_audio(
     user_id: int,
     request: Request,
     file: UploadFile = File(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    lang: Optional[str] = 'en'
 ):
     """
     Process video and return both text results and audio file path.
@@ -295,7 +307,8 @@ async def detect_video_with_audio(
                 saved_video_path,  # Save annotated video directly
                 model_yolo,
                 model_lights,
-                model_zebra
+                model_zebra,
+                None
             )
         detection_time = time.time() - detection_start
         print(f"Detection completed in {detection_time:.2f} seconds")
@@ -320,7 +333,7 @@ async def detect_video_with_audio(
     saved_audio_path = None
     audio_start = time.time()
     try:
-        generator = audio_generator.AudioGenerator(pause_duration=250)
+        generator = audio_generator.AudioGenerator(language=lang or 'en', pause_duration=250)
         temp_audio_path = generator.generate_audio_quick(audio_results_list)
         
         # Move audio to permanent storage

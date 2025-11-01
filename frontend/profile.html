@@ -12,10 +12,10 @@
 		<nav class="navbar">
 			<a href="home.html" class="navbar-brand">Object Detecto</a>
 			<div class="navbar-links">
-				<a href="home.html" class="nav-link">Home</a>
-				<a href="upload.html" class="nav-link">Upload</a>
-				<a href="detections.html" class="nav-link">Detections</a>
-				<a href="about.html" class="nav-link">About</a>
+				<a href="home.html" class="nav-link" aria-label="Go to Home">Home</a>
+				<a href="upload.html" class="nav-link" aria-label="Go to Upload">Upload</a>
+				<a href="detections.html" class="nav-link" aria-label="Go to Detections">Detections</a>
+				<a href="about.html" class="nav-link" aria-label="Go to About">About</a>
 			</div>
 			<div class="navbar-profile">
 				<a href="profile.html" class="nav-avatar">
@@ -26,24 +26,68 @@
 		</nav>
 	</header>
 
-	<main class="page-main-content">
-		<h1 class="page-title">My Profile</h1>
-		<div class="content-box" style="max-width: 600px; margin: 0 auto;">
-			<form id="profile-form" class="form-layout">
+	<main class="page-main-content" role="main" aria-label="Profile and Settings">
+		<h1 class="page-title">My Profile &amp; Settings</h1>
+		<div class="content-box" style="max-width: 700px; margin: 0 auto;">
+			<form id="profile-form" class="form-layout" aria-label="Profile and Settings Form">
+				
+				<h2 style="margin-top:0; border-bottom: 2px solid #ddd; padding-bottom:8px;">Profile Information</h2>
+				
 				<div class="form-group">
-					<label for="first-name">First Name</label>
-					<input id="first-name" type="text" required class="input-field">
+					<label for="username">Username</label>
+					<input id="username" type="text" required class="input-field" aria-required="true" aria-describedby="username-help">
+					<small id="username-help" style="color:#666; font-size:12px;">Your display name</small>
 				</div>
 				<div class="form-group">
 					<label for="email">Email</label>
-					<input id="email" type="email" required class="input-field" disabled>
+					<input id="email" type="email" required class="input-field" disabled aria-describedby="email-help">
+					<small id="email-help" style="color:#666; font-size:12px;">Email cannot be changed</small>
 				</div>
-                
-				<div id="message-text" class="error-text">
-					</div>
 
-				<button id="update-profile-button" type="submit" class="button button-primary">
-					Update Profile
+				<h2 style="margin-top:24px; border-bottom: 2px solid #ddd; padding-bottom:8px;">Audio &amp; Language Settings</h2>
+				
+				<div class="form-group">
+					<label for="language-select">Audio Language</label>
+					<select id="language-select" class="input-field" aria-describedby="lang-help">
+						<option value="en" selected>English</option>
+						<option value="te">Telugu</option>
+						<option value="hi">Hindi</option>
+					</select>
+					<small id="lang-help" style="color:#666; font-size:12px;">Language used for audio detection summaries</small>
+				</div>
+
+				<div class="form-group">
+					<label for="audio-speed-select">Audio Playback Speed</label>
+					<select id="audio-speed-select" class="input-field" aria-describedby="speed-help">
+						<option value="0.8">0.8x</option>
+						<option value="1.0">1.0x</option>
+						<option value="1.2">1.2x</option>
+						<option value="1.3" selected>1.3x</option>
+						<option value="1.5">1.5x</option>
+						<option value="1.8">1.8x</option>
+						<option value="2.0">2.0x</option>
+					</select>
+					<small id="speed-help" style="color:#666; font-size:12px;">Speed of audio playback</small>
+				</div>
+
+				<h2 style="margin-top:24px; border-bottom: 2px solid #ddd; padding-bottom:8px;">Voice Tips</h2>
+
+				<div class="form-group" style="display:flex; gap:16px; align-items:center;">
+					<input type="checkbox" id="show-voice-tips" aria-describedby="tips-help" />
+					<label for="show-voice-tips" style="margin:0;">Show voice tips on page load</label>
+				</div>
+				<small id="tips-help" style="color:#666; font-size:12px; display:block; margin-top:-8px; margin-left:32px;">Display helpful voice commands when you visit a page</small>
+
+				<div class="form-group" style="display:flex; gap:16px; align-items:center;">
+					<input type="checkbox" id="compact-voice-tips" aria-describedby="compact-help" />
+					<label for="compact-voice-tips" style="margin:0;">Compact voice tips (icon expands on click)</label>
+				</div>
+				<small id="compact-help" style="color:#666; font-size:12px; display:block; margin-top:-8px; margin-left:32px;">Show a small icon instead of full tips banner</small>
+                
+				<div id="message-text" class="error-text" role="alert" aria-live="polite"></div>
+
+				<button id="update-profile-button" type="submit" class="button button-primary" aria-label="Save Profile and Settings">
+					Save All Changes
 				</button>
 			</form>
 		</div>
@@ -51,6 +95,8 @@
     
 	<script src="js/api.js"></script>
 	<script src="js/profile.js"></script>
+	<script src="js/settings.js"></script>
 	<script src="js/voice.js"></script>
+	<script src="js/help.js"></script>
 </body>
 </html>

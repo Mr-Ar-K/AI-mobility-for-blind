@@ -12,10 +12,10 @@
 		<nav class="navbar">
 			<a href="home.html" class="navbar-brand">Object Detecto</a>
 			<div class="navbar-links">
-				<a href="home.html" class="nav-link">Home</a>
-				<a href="upload.html" class="nav-link">Upload</a>
-				<a href="detections.html" class="nav-link">Detections</a>
-				<a href="about.html" class="nav-link">About</a>
+				<a href="home.html" class="nav-link" aria-label="Go to Home">Home</a>
+				<a href="upload.html" class="nav-link" aria-label="Go to Upload">Upload</a>
+				<a href="detections.html" class="nav-link" aria-label="Go to Detections">Detections</a>
+				<a href="about.html" class="nav-link" aria-label="Go to About">About</a>
 			</div>
 			<div class="navbar-profile">
 				<a href="profile.html" class="nav-avatar">
@@ -30,16 +30,21 @@
 		<h1 class="page-title">Submit Feedback</h1>
 		<p class="page-subtitle">We would love to hear your thoughts!</p>
 		<div class="content-box" style="max-width: 700px; margin: 0 auto;">
-			<form id="feedback-form" class="form-layout">
+			<form id="feedback-form" class="form-layout" aria-label="Feedback form">
 				<div class="form-group">
 					<label for="feedback-text">Your Feedback</label>
-					<textarea id="feedback-text" required class="textarea-field" placeholder="Tell us what you think..."></textarea>
+					<textarea id="feedback-text" required class="textarea-field" 
+					          placeholder="Tell us what you think..." 
+					          aria-label="Enter your feedback" 
+					          aria-describedby="feedback-hint"></textarea>
+					<small id="feedback-hint" class="helper-text">Share your experience, suggestions, or report any issues</small>
 				</div>
 
-				<div id="message-text" class="error-text">
+				<div id="message-text" class="error-text" role="alert" aria-live="polite">
 					</div>
 
-				<button id="submit-feedback-button" type="submit" class="button button-primary">
+				<button id="submit-feedback-button" type="submit" class="button button-primary"
+				        aria-label="Submit your feedback">
 					Submit Feedback
 				</button>
 			</form>
@@ -48,5 +53,8 @@
     
 	<script src="js/api.js"></script>
 	<script src="js/home.js"></script>
-	<script src="js/voice.js"></script> </body>
+	<script src="js/feedback.js"></script>
+	<script src="js/voice.js"></script>
+	<script src="js/help.js"></script>
+</body>
 </html>
