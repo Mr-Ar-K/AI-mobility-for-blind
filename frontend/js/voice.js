@@ -13,16 +13,19 @@
     }
   } catch(_) {}
 
-  function speak(text) {
-    try {
-      if (!synth) return;
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = 1;
-      utter.pitch = 1;
-      utter.lang = 'en-US';
-      synth.cancel();
-      synth.speak(utter);
-    } catch (_) {}
+  // Modify the speak function to prevent adding a full stop for sensitive information
+  function speak(resultText) {
+    // Check if the text is a username, password, or email
+    const sensitiveKeywords = ['username', 'password', 'email'];
+    const isSensitive = sensitiveKeywords.some(keyword => resultText.toLowerCase().includes(keyword));
+
+    // Remove the full stop if the text is sensitive
+    if (isSensitive) {
+        resultText = resultText.replace(/\.$/, '');
+    }
+
+    const utter = new SpeechSynthesisUtterance(resultText);
+    synth.speak(utter);
   }
 
   // Non-verbal tones using Web Audio API
