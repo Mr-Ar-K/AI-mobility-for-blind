@@ -1,7 +1,7 @@
 // Wait for the page's HTML to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
 	const loginForm = document.getElementById('login-form');
-	const emailInput = document.getElementById('email');
+	const identifierInput = document.getElementById('identifier');
 	const passwordInput = document.getElementById('password');
 	const loginButton = document.getElementById('login-button');
 	const errorMessage = document.getElementById('error-message');
@@ -15,11 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		errorMessage.textContent = ''; // Clear old errors
 
 		try {
-			const email = emailInput.value;
+			const identifier = identifierInput.value; // username or email
 			const password = passwordInput.value;
 
 			// Call the login function from api.js (stores user in localStorage)
-			await login(email, password);
+			await login(identifier, password);
 
 			// Redirect to the home page
 			window.location.href = 'home.html';

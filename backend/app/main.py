@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
+import torch
 
 from .core.config import settings
 from .db import database, models
@@ -25,20 +26,34 @@ app.add_middleware(
 @app.on_event("startup")
 def load_model():
     print("Loading multi-model detection system...")
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device: {device}")
     
     # Model 1: YOLOv8m (for general objects - cars, people, etc.)
     print(f"Loading YOLOv8m model from: {settings.MODEL_PATH_YOLO}")
     app.state.model_yolo = YOLO(settings.MODEL_PATH_YOLO)
+    try:
+        app.state.model_yolo.to(device)
+    except Exception as _:
+        pass
     print("✅ YOLOv8m model loaded successfully.")
     
     # Model 2: Traffic Lights specialist
     print(f"Loading Traffic Lights model from: {settings.MODEL_PATH_TRAFFIC_LIGHTS}")
     app.state.model_lights = YOLO(settings.MODEL_PATH_TRAFFIC_LIGHTS)
+    try:
+        app.state.model_lights.to(device)
+    except Exception as _:
+        pass
     print("✅ Traffic Lights model loaded successfully.")
     
     # Model 3: Zebra Crossing specialist
     print(f"Loading Zebra Crossing model from: {settings.MODEL_PATH_ZEBRA_CROSSING}")
     app.state.model_zebra = YOLO(settings.MODEL_PATH_ZEBRA_CROSSING)
+    try:
+        app.state.model_zebra.to(device)
+    except Exception as _:
+        pass
     print("✅ Zebra Crossing model loaded successfully.")
     
     print("🎉 All models loaded successfully!")

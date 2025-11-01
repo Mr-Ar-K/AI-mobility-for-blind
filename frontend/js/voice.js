@@ -80,14 +80,15 @@
   }
 
   function handleLoginCommands(cmd) {
-    const emailEl = on('#email');
+    const idEl = on('#identifier');
     const passEl = on('#password');
     const form = on('#login-form');
-    if (/email (is|at) (.+)/.test(cmd) && emailEl) {
+    if (/email (is|at) (.+)/.test(cmd) && idEl) {
       const m = cmd.match(/email (is|at) (.+)/);
-      emailEl.value = (m && m[2]) ? m[2].replace(/\s+at\s+/g,'@').replace(/\s+dot\s+/g,'.').replace(/\s/g,'') : emailEl.value;
+      idEl.value = (m && m[2]) ? m[2].replace(/\s+at\s+/g,'@').replace(/\s+dot\s+/g,'.').replace(/\s/g,'') : idEl.value;
       speak('Email set'); return true;
     }
+    if (/username (is|equals) (.+)/.test(cmd) && idEl) { idEl.value = cmd.match(/username (is|equals) (.+)/)[2]; speak('Username set'); return true; }
     if (/password (is|equals) (.+)/.test(cmd) && passEl) {
       const m = cmd.match(/password (is|equals) (.+)/);
       passEl.value = m && m[2] ? m[2] : passEl.value;

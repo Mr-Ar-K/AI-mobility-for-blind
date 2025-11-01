@@ -2,6 +2,13 @@ import cv2
 from ultralytics import YOLO
 from . import detection_logic  # Import from our new logic file
 
+# Tuning constants for performance
+TARGET_FPS = 3  # process ~3 frames per second
+YOLO_IMGSZ = 640  # downscale for faster inference
+YOLO_CONF = 0.5   # raise threshold to reduce boxes
+YOLO_IOU = 0.5
+YOLO_MAX_DET = 50 # limit detections per frame
+
 def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_zebra: YOLO) -> list[str]:
     """
     Processes a video file using three models in sequence and returns a list of audio descriptions.
@@ -17,29 +24,44 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
     # These are reset for every video processed
     audio_log = []
     detection_state = {}
-
+    cap = None
+    frame_count = 0
+    processed_frames = 0
     try:
         cap = cv2.VideoCapture(video_path)
         frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30
         
         if not cap.isOpened():
             print(f"Error: Could not open video file {video_path}")
             return ["Error: Could not open video file."]
 
-        frame_count = 0
+        # compute sampling interval
+        sample_interval = max(1, int(round(fps / TARGET_FPS)))
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
+            # frame sampling to reduce load
+            if frame_count % sample_interval != 0:
+                frame_count += 1
+                continue
             
             detections = []
             
             # ========== STEP 1: Run YOLOv8m (General Objects) ==========
             # Exclude class 9 (traffic lights) as we have a specialist model for that
             yolo_classes_to_keep = [i for i in range(80) if i != 9]
-            results_yolo = model_yolo(frame, classes=yolo_classes_to_keep, conf=0.4, verbose=False)
+            results_yolo = model_yolo(
+                frame,
+                classes=yolo_classes_to_keep,
+                conf=YOLO_CONF,
+                iou=YOLO_IOU,
+                imgsz=YOLO_IMGSZ,
+                max_det=YOLO_MAX_DET,
+                verbose=False
+            )
             
             for r in results_yolo:
                 for box in r.boxes:
@@ -66,7 +88,15 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
             # ========== STEP 2: Run Traffic Lights Model ==========
             # Only keep classes 2, 3, 4 (green, red, yellow)
             light_classes_to_keep = [2, 3, 4]
-            results_lights = model_lights(frame, classes=light_classes_to_keep, conf=0.4, verbose=False)
+            results_lights = model_lights(
+                frame,
+                classes=light_classes_to_keep,
+                conf=YOLO_CONF,
+                iou=YOLO_IOU,
+                imgsz=YOLO_IMGSZ,
+                max_det=YOLO_MAX_DET,
+                verbose=False
+            )
             
             for r in results_lights:
                 for box in r.boxes:
@@ -93,7 +123,15 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
             # ========== STEP 3: Run Zebra Crossing Model ==========
             # Only keep class 8 (zebra crossing)
             zebra_classes_to_keep = [8]
-            results_zebra = model_zebra(frame, classes=zebra_classes_to_keep, conf=0.4, verbose=False)
+            results_zebra = model_zebra(
+                frame,
+                classes=zebra_classes_to_keep,
+                conf=YOLO_CONF,
+                iou=YOLO_IOU,
+                imgsz=YOLO_IMGSZ,
+                max_det=YOLO_MAX_DET,
+                verbose=False
+            )
             
             for r in results_zebra:
                 for box in r.boxes:
@@ -126,14 +164,22 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
                 audio_message = detection_logic.generate_audio_message(grouped, frame_count, fps, detection_state)
                 if audio_message:
                     audio_log.append(audio_message)
-            
+            processed_frames += 1
             frame_count += 1
+
+            # Optional: stop early if we already have enough guidance messages
+            if len(audio_log) >= 12:
+                break
 
     except Exception as e:
         print(f"Error during video processing: {e}")
         audio_log.append(f"An error occurred during processing: {e}")
     finally:
-        cap.release()
-        print(f"Processed {frame_count} frames. Found {len(audio_log)} audio messages.")
+        try:
+            if cap is not None:
+                cap.release()
+        except Exception:
+            pass
+    print(f"Processed {processed_frames} frames (sampled from {frame_count}). Found {len(audio_log)} audio messages.")
     
     return audio_log

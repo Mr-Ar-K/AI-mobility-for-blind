@@ -100,55 +100,41 @@ class AudioGenerator:
                 seen.add(s)
                 unique_sentences.append(s)
         
-        # Generate TTS for each sentence
-        temp_files = []
-        tts_segments = []
-        
+        # FAST PATH: single TTS request for all sentences to reduce latency
         try:
-            for i, sentence in enumerate(unique_sentences):
-                # Create temporary file for each TTS segment
-                temp_file = tempfile.NamedTemporaryFile(
-                    delete=False, 
-                    suffix=f'_tts_{i}.mp3',
-                    dir=os.path.dirname(output_path)
-                )
-                temp_filename = temp_file.name
-                temp_file.close()
-                
-                # Generate TTS
-                tts = gTTS(text=sentence, lang=self.language, slow=False)
-                tts.save(temp_filename)
-                
-                # Load as audio segment
-                audio_seg = AudioSegment.from_mp3(temp_filename)
-                tts_segments.append(audio_seg)
-                temp_files.append(temp_filename)
-            
-            # Merge all segments with pauses
-            final_audio = AudioSegment.empty()
-            for seg in tts_segments:
-                final_audio += seg + AudioSegment.silent(duration=self.pause_duration)
-            
-            # Export final audio
-            final_audio.export(output_path, format="mp3")
-            
-            # Cleanup temporary files
-            for temp_file in temp_files:
-                try:
-                    os.remove(temp_file)
-                except:
-                    pass
-            
+            # Join sentences with short pauses represented by periods
+            # This avoids multiple network calls to gTTS
+            joined_text = ". ".join(unique_sentences)
+            tts = gTTS(text=joined_text, lang=self.language, slow=False)
+            tts.save(output_path)
             return output_path
-            
         except Exception as e:
-            # Cleanup on error
-            for temp_file in temp_files:
-                try:
-                    os.remove(temp_file)
-                except:
-                    pass
-            raise Exception(f"Failed to generate audio: {str(e)}")
+            # Fallback: try per-sentence merge if single-shot fails
+            temp_files = []
+            tts_segments = []
+            try:
+                for i, sentence in enumerate(unique_sentences):
+                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f'_tts_{i}.mp3', dir=os.path.dirname(output_path))
+                    temp_filename = temp_file.name
+                    temp_file.close()
+                    tts = gTTS(text=sentence, lang=self.language, slow=False)
+                    tts.save(temp_filename)
+                    audio_seg = AudioSegment.from_mp3(temp_filename)
+                    tts_segments.append(audio_seg)
+                    temp_files.append(temp_filename)
+                final_audio = AudioSegment.empty()
+                for seg in tts_segments:
+                    final_audio += seg + AudioSegment.silent(duration=self.pause_duration)
+                final_audio.export(output_path, format="mp3")
+                for temp_file in temp_files:
+                    try: os.remove(temp_file)
+                    except: pass
+                return output_path
+            except Exception as e2:
+                for temp_file in temp_files:
+                    try: os.remove(temp_file)
+                    except: pass
+                raise Exception(f"Failed to generate audio (fast and fallback): {str(e2)}")
     
     def generate_audio_quick(self, alerts: List[str]) -> str:
         """

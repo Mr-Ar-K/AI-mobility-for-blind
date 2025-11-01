@@ -5,8 +5,8 @@ from ultralytics import YOLO
 # ================================================================
 # CONFIGURATION - Multi-Model Detection System
 # ================================================================
-FRAME_GROUPING_WINDOW = 150
-CONFIDENCE_THRESHOLD = 0.6
+FRAME_GROUPING_WINDOW = 120
+CONFIDENCE_THRESHOLD = 0.7
 
 # YOLOv8m standard COCO class names (we use cars, people, etc.)
 # Full COCO classes: https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco.yaml
