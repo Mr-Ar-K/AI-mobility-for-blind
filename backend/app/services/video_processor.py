@@ -6,8 +6,8 @@ from . import detection_logic  # Import from our new logic file
 # Tuning constants for CPU performance optimization
 TARGET_FPS = 3   # process ~3 frames per second for CPU efficiency
 YOLO_IMGSZ = 416 # smaller resolution for faster CPU inference (does not change output video resolution)
-# Per request: detect all objects irrespective of probability -> very low confidence threshold
-YOLO_CONF = 0.3
+# Use a balanced confidence threshold to reduce noise and speed up NMS
+YOLO_CONF = 0.45
 YOLO_IOU = 0.6
 YOLO_MAX_DET = 100
 
@@ -77,8 +77,7 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
                 iou=YOLO_IOU,
                 imgsz=YOLO_IMGSZ,
                 max_det=YOLO_MAX_DET,
-                verbose=False,
-                device='cpu'  # Force CPU usage
+                verbose=False
             )
             
             for r in results_yolo:
@@ -113,8 +112,7 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
                 iou=YOLO_IOU,
                 imgsz=YOLO_IMGSZ,
                 max_det=YOLO_MAX_DET,
-                verbose=False,
-                device='cpu'  # Force CPU usage
+                verbose=False
             )
             
             for r in results_lights:
@@ -149,8 +147,7 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
                 iou=YOLO_IOU,
                 imgsz=YOLO_IMGSZ,
                 max_det=YOLO_MAX_DET,
-                verbose=False,
-                device='cpu'  # Force CPU usage
+                verbose=False
             )
             
             for r in results_zebra:
@@ -274,8 +271,7 @@ def run_detection_with_video(video_path: str, output_video_path: str, model_yolo
                     iou=YOLO_IOU,
                     imgsz=YOLO_IMGSZ,
                     max_det=YOLO_MAX_DET,
-                    verbose=False,
-                    device='cpu'  # Force CPU usage
+                    verbose=False
                 )
                 
                 for r in results_yolo:
@@ -309,8 +305,7 @@ def run_detection_with_video(video_path: str, output_video_path: str, model_yolo
                     iou=YOLO_IOU,
                     imgsz=YOLO_IMGSZ,
                     max_det=YOLO_MAX_DET,
-                    verbose=False,
-                    device='cpu'  # Force CPU usage
+                    verbose=False
                 )
                 
                 for r in results_lights:
@@ -344,8 +339,7 @@ def run_detection_with_video(video_path: str, output_video_path: str, model_yolo
                     iou=YOLO_IOU,
                     imgsz=YOLO_IMGSZ,
                     max_det=YOLO_MAX_DET,
-                    verbose=False,
-                    device='cpu'  # Force CPU usage
+                    verbose=False
                 )
                 
                 for r in results_zebra:

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from ultralytics import YOLO
 import torch
 import asyncio
@@ -25,6 +26,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+# GZip compression for faster transfers of JSON and other responses
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 # --- Initialize Task Queue for Multi-User Processing ---
 app.state.task_queue = deque()  # FIFO queue for processing tasks
 app.state.processing_lock = asyncio.Lock()  # Legacy lock (unused with semaphore)
@@ -45,6 +49,16 @@ def load_model():
     app.state.model_yolo = YOLO(settings.MODEL_PATH_YOLO)
     try:
         app.state.model_yolo.to(device)
+        # Fuse Conv+BN for speed and use half precision on CUDA when available
+        try:
+            app.state.model_yolo.fuse()
+        except Exception:
+            pass
+        if device == 'cuda':
+            try:
+                app.state.model_yolo.model.half()
+            except Exception:
+                pass
     except Exception as _:
         pass
     print("✅ YOLOv8m model loaded successfully.")
@@ -54,6 +68,15 @@ def load_model():
     app.state.model_lights = YOLO(settings.MODEL_PATH_TRAFFIC_LIGHTS)
     try:
         app.state.model_lights.to(device)
+        try:
+            app.state.model_lights.fuse()
+        except Exception:
+            pass
+        if device == 'cuda':
+            try:
+                app.state.model_lights.model.half()
+            except Exception:
+                pass
     except Exception as _:
         pass
     print("✅ Traffic Lights model loaded successfully.")
@@ -63,6 +86,15 @@ def load_model():
     app.state.model_zebra = YOLO(settings.MODEL_PATH_ZEBRA_CROSSING)
     try:
         app.state.model_zebra.to(device)
+        try:
+            app.state.model_zebra.fuse()
+        except Exception:
+            pass
+        if device == 'cuda':
+            try:
+                app.state.model_zebra.model.half()
+            except Exception:
+                pass
     except Exception as _:
         pass
     print("✅ Zebra Crossing model loaded successfully.")
