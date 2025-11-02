@@ -19,8 +19,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = (typeof getAppSettings === 'function') ? getAppSettings() : (JSON.parse(localStorage.getItem('app_settings')||'{}'));
     if (s.language && langSel) langSel.value = s.language;
     if (s.audioRate && audioSel) audioSel.value = String(s.audioRate);
-    if (showTipsEl) showTipsEl.checked = (s.showVoiceTips !== false); // default true
-    if (compactTipsEl) compactTipsEl.checked = (s.compactVoiceTips === true); // default false
+    // Enforce compact tips globally: hide/disable banner option and force compact
+    if (showTipsEl) {
+      // Hide the banner option as it's no longer used
+      const row = showTipsEl.closest('.form-group') || showTipsEl.parentElement;
+      if (row) row.style.display = 'none';
+      showTipsEl.checked = false;
+      showTipsEl.disabled = true;
+    }
+    if (compactTipsEl) {
+      compactTipsEl.checked = true;
+      compactTipsEl.disabled = true; // enforced
+    }
     if (themeSel) themeSel.value = s.theme || 'light';
     if (tonesEl) tonesEl.checked = (s.enableTones !== false); // default true
 
@@ -35,8 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const language = langSel ? langSel.value : 'en';
     const audioRate = audioSel ? parseFloat(audioSel.value) : 1.3;
-    const showVoiceTips = showTipsEl ? !!showTipsEl.checked : true;
-    const compactVoiceTips = compactTipsEl ? !!compactTipsEl.checked : false;
+    // Enforce settings: banner disabled, compact enabled
+    const showVoiceTips = false;
+    const compactVoiceTips = true;
     const theme = themeSel ? themeSel.value : 'light';
     const enableTones = tonesEl ? !!tonesEl.checked : true;
     try {

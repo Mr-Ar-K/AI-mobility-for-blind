@@ -260,17 +260,11 @@
   }
 
   function initTipsUI() {
-    const s = getAppSettingsLocal();
-    const show = (s.showVoiceTips !== false); // default true
-    const compact = (s.compactVoiceTips === true); // default false
-    if (compact) {
-      // Compact mode: show icon; only expand on click
+    // Enforce compact tips across all pages: button icon only
+    // Full banner is disabled per product decision
+    try {
       createCompactTips();
-      // If show=true, we keep just the icon (still compact)
-    } else if (show) {
-      // Full banner
-      createTipsBanner();
-    }
+    } catch(_) {}
   }
 
   function showHeard(text) {
@@ -299,12 +293,7 @@
   }
 
   function handleCommonCommands(cmd) {
-    // Help command
-    if (/help|what can i say|what commands/.test(cmd)) {
-      const tips = tipsForPath(window.location.pathname);
-      speak('Here are some commands you can use. ' + tips.slice(0, 3).join('. ') + '. Say help again for more options.');
-      return true;
-    }
+    // Help command removed per requirements
     
     // Navigation with conversational responses
     if (/go (to )?home|open home/.test(cmd)) { speak('Taking you to the home page where you can access all features.'); go('home.html'); return true; }
@@ -674,13 +663,13 @@
       if (isLikelyCommand(transcript)) {
         const handled = routeCommand(transcript);
         if (!handled) {
-          speak('I did not understand that command. Could you please repeat? Or say help to hear what I can do for you.');
+          speak('I did not understand that command. Could you please repeat?');
         }
       } else {
         console.log('Ignored non-command speech:', transcript);
         // Occasionally prompt the user if they seem to be talking but not giving commands
         if (Math.random() < 0.3) {
-          speak('I am listening. Say help if you need to know what I can do.');
+          speak('I am listening.');
         }
       }
       
@@ -733,7 +722,7 @@
       recognitionActive = true;
       try { 
         recognition.start(); 
-        speak('Hello! I am listening. What would you like to do? Say help to hear available commands.');
+  speak('Hello! I am listening. What would you like to do?');
         console.log('Voice recognition started');
       } catch(e) {
         console.error('Failed to start recognition:', e);

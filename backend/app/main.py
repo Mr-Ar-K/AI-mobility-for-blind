@@ -14,7 +14,19 @@ from .routers import users, history, detection
 # Create all database tables
 models.Base.metadata.create_all(bind=database.engine)
 
+
+import logging
 app = FastAPI(title="AI-Mobility-for-Blind Backend")
+
+# --- Logging Middleware for Investigating Invalid Requests ---
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    # Log method, path, and headers for every request
+    logging.info(f"Incoming request: {request.method} {request.url.path} from {request.client.host}:{request.client.port}")
+    for k, v in request.headers.items():
+        logging.info(f"Header: {k}: {v}")
+    response = await call_next(request)
+    return response
 
 # --- CORS Middleware ---
 # This allows your frontend (running on a different port) to talk to this backend

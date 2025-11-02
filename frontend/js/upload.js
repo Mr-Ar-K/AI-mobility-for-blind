@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// Announce page load for blind users
-	announceProgress('Welcome to the upload page! To get started, please select a video file using the file input. Once selected, you can say upload video, and I will process it for you. This usually takes a few minutes depending on the video length. Say help anytime if you need assistance.');
+	announceProgress('Welcome to the upload page! To get started, please select a video file using the file input. Once selected, you can say upload video, and I will process it for you. This usually takes a few minutes depending on the video length.');
 
 	uploadForm.addEventListener('submit', async (e) => {
 		e.preventDefault();

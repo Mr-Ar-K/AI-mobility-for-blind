@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		// Announce home page for blind users
 		if ('speechSynthesis' in window) {
-			const utterance = new SpeechSynthesisUtterance(`Welcome home, ${firstName}! You can say go to upload to process a new video, or say go to detections to review your history. You can also say go to profile to change your settings, or say help to hear all available commands.`);
+			const utterance = new SpeechSynthesisUtterance(`Welcome home, ${firstName}! You can say go to upload to process a new video, or say go to detections to review your history. You can also say go to profile to change your settings.`);
 			utterance.rate = 1.2;
 			utterance.volume = 0.8;
 			window.speechSynthesis.speak(utterance);
