@@ -109,6 +109,11 @@ body {
   background-attachment: fixed;
 }
 
+/* Reduce background noise in high-contrast for clarity */
+[data-theme="high-contrast"] body {
+  background-image: none !important;
+}
+
 /* Global background overlay: marquee text + brand mark */
 .bg-overlay {
   position: fixed;
@@ -634,12 +639,15 @@ label {
 .nav-link {
   font-size: 0.875rem;
   font-weight: 500;
-  color: hsl(var(--muted-foreground));
+  /* Use stronger default contrast for better visibility across themes */
+  color: hsl(var(--foreground));
+  opacity: 0.92;
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color 0.2s, opacity 0.2s;
 }
 .nav-link:hover {
   color: hsl(var(--foreground));
+  opacity: 1;
 }
 .nav-link.active,
 .nav-link[aria-current="page"] {
@@ -777,8 +785,16 @@ label {
   font-size: 0.75rem;
   border: 1px solid hsl(var(--border));
   border-radius: 999px;
-  background: rgba(255,255,255,0.7);
+  /* Use theme-aware glass surface instead of fixed white */
+  background: var(--glass-weak-bg);
   color: hsl(var(--muted-foreground));
+}
+
+/* Detections page spacing matches About spacing */
+.detections-page.page-main-content {
+  padding: 3rem 1.5rem 4rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .stats-grid-spacious {
@@ -796,7 +812,8 @@ label {
   .stats-grid-spacious { grid-template-columns: repeat(3, 1fr); }
 }
 .stat-card-modern {
-  background: var(--glass-weak-bg);
+  /* Layer a subtle glass over a solid card color for readability on all themes */
+  background: linear-gradient(var(--glass-weak-bg), var(--glass-weak-bg)), hsl(var(--card));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid hsl(var(--border));
@@ -805,6 +822,16 @@ label {
   padding: 2.5rem 2rem;
   text-align: center;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+/* Dark theme: slightly stronger border to improve edge visibility */
+[data-theme="dark"] .stat-card-modern {
+  border-color: hsl(var(--border) / 0.9);
+}
+/* High-contrast: solid backgrounds and crisp borders */
+[data-theme="high-contrast"] .stat-card-modern {
+  background: hsl(var(--card));
+  border-color: #ffffff;
+  box-shadow: none;
 }
 .stat-card-modern:hover {
   transform: translateY(-4px);
@@ -914,7 +941,7 @@ a.stat-card-modern { display: block; text-decoration: none; color: inherit; }
   border-radius: 999px;
   padding: 0.1rem 0.5rem;
   font-size: 0.8rem;
-  background: rgba(255,255,255,0.7);
+  background: var(--glass-weak-bg);
   color: hsl(var(--foreground));
 }
 .home-title {
@@ -943,10 +970,11 @@ a.stat-card-modern { display: block; text-decoration: none; color: inherit; }
   }
 }
 .card-link {
-  background: rgba(255,255,255,0.72);
+  /* Theme-aware surface for legacy cards */
+  background: linear-gradient(var(--glass-weak-bg), var(--glass-weak-bg)), hsl(var(--card));
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.45);
+  border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   padding: 1.5rem;
   cursor: pointer;
@@ -976,7 +1004,8 @@ a.stat-card-modern { display: block; text-decoration: none; color: inherit; }
   border: 1px dashed hsl(var(--border));
   border-radius: var(--radius);
   min-height: 120px;
-  background: rgba(255,255,255,0.6);
+  /* Theme-aware surface for readability */
+  background: linear-gradient(var(--glass-weak-bg), var(--glass-weak-bg)), hsl(var(--card));
   backdrop-filter: blur(6px);
 }
 .results-container p {
@@ -1000,6 +1029,11 @@ a.stat-card-modern { display: block; text-decoration: none; color: inherit; }
 .helper-text {
   color: hsl(var(--muted-foreground));
   font-size: 0.8rem;
+}
+
+/* Ensure inline small helper notes remain readable across themes */
+.content-box small {
+  color: hsl(var(--muted-foreground)) !important;
 }
 
 /* Respect reduced motion preferences */
@@ -1036,8 +1070,15 @@ a.stat-card-modern { display: block; text-decoration: none; color: inherit; }
 }
 .detection-item p {
   font-size: 0.9rem;
-  color: hsl(var(--muted-foreground));
+  /* Use stronger text color for detection details for readability */
+  color: hsl(var(--foreground));
   margin-bottom: 1rem;
+}
+
+/* Emphasize the objects-found line specifically for high visibility */
+.objects-found {
+  color: hsl(var(--foreground));
+  font-weight: 600;
 }
 .detection-item audio {
   width: 100%;
@@ -1048,6 +1089,7 @@ a.stat-card-modern { display: block; text-decoration: none; color: inherit; }
   margin-bottom: 1rem;
   border-radius: 8px;
   background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
 }
 .detection-item img {
   width: 100%;
@@ -1055,4 +1097,23 @@ a.stat-card-modern { display: block; text-decoration: none; color: inherit; }
   margin-bottom: 1rem;
   border-radius: 8px;
   object-fit: contain;
+  border: 1px solid hsl(var(--border));
+}
+
+/* Improve visibility in High-Contrast mode: remove gradient text and strengthen borders */
+[data-theme="high-contrast"] .page-title,
+[data-theme="high-contrast"] .page-title-xl,
+[data-theme="high-contrast"] .home-title {
+  background: none !important;
+  color: hsl(var(--foreground)) !important;
+}
+[data-theme="high-contrast"] .stat-icon-large {
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+[data-theme="high-contrast"] .detection-item video,
+[data-theme="high-contrast"] .detection-item img {
+  border-color: #ffffff !important;
+  background: #000000 !important;
 }

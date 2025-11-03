@@ -34,10 +34,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 		history.forEach(item => {
 			console.log('Processing item:', item);
 			const card = document.createElement('div');
-			card.className = 'detection-item card-link'; // Reuse our card style
+			card.className = 'detection-item stat-card-modern'; // Use modern stat card style
+
+				// Icon at top to match stat-card style
+				const icon = document.createElement('div');
+				icon.className = 'stat-icon-large';
+				icon.setAttribute('aria-hidden', 'true');
+				if (item.video_path) icon.textContent = '🎬';
+				else if (item.image_path) icon.textContent = '🖼️';
+				else icon.textContent = '🔎';
+				card.appendChild(icon);
 
 			// Title (Date)
-			const title = document.createElement('h2');
+				const title = document.createElement('h3');
 			const itemDate = new Date(item.timestamp);
 			title.textContent = `Detection from ${itemDate.toLocaleString()}`;
 			card.appendChild(title);
@@ -80,9 +89,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 					console.error('Error code:', videoPlayer.error?.code);
 					console.error('Error message:', videoPlayer.error?.message);
 					
-					// Show user-friendly error
+					// Show user-friendly error with theme-aware style
 					const errorMsg = document.createElement('p');
-					errorMsg.style.color = 'red';
+					errorMsg.className = 'error-text';
 					errorMsg.textContent = `⚠️ Could not load video (Error ${videoPlayer.error?.code || 'unknown'})`;
 					videoContainer.appendChild(errorMsg);
 				};
@@ -109,6 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 			// Detections Text
 			const objects = (item.results && item.results.length) ? item.results.join(', ') : 'No objects detected';
 			const detectionsText = document.createElement('p');
+			detectionsText.className = 'objects-found';
 			detectionsText.textContent = `Objects found: ${objects}`;
 			card.appendChild(detectionsText);
 
