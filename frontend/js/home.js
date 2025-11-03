@@ -12,11 +12,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 		});
 	}
 
+	let firstName = 'User';
 	try {
 		// Fetch user data to populate navbar
 	const user = await getCurrentUser(); // returns backend user
         
-	const firstName = user.username || 'User';
+	firstName = user.username || 'User';
 		const initials = firstName.charAt(0).toUpperCase();
 
 		if (userInitialsSpan) {
@@ -44,47 +45,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 	} catch(_) {}
 
 	// --- 2. Home Page Specific Logic ---
-	// This code only runs if it finds the ".home-grid"
-	if (document.querySelector('.home-grid')) {
-
-		// Announce home page for blind users
-		if ('speechSynthesis' in window) {
-			const utterance = new SpeechSynthesisUtterance(`Welcome home, ${firstName}! You can say go to upload to process a new video, or say go to detections to review your history. You can also say go to profile to change your settings.`);
-			utterance.rate = 1.2;
-			utterance.volume = 0.8;
-			window.speechSynthesis.speak(utterance);
-		}
-
-		const uploadCard = document.getElementById('upload-card');
-		uploadCard.addEventListener('click', () => {
-			window.location.href = 'upload.html';
-		});
-		uploadCard.addEventListener('keydown', (e) => {
-			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'upload.html'; }
-		});
-
-		const detectionsCard = document.getElementById('detections-card');
-		detectionsCard.addEventListener('click', () => {
-			window.location.href = 'detections.html';
-		});
-		detectionsCard.addEventListener('keydown', (e) => {
-			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'detections.html'; }
-		});
-
-		const aboutCard = document.getElementById('about-card');
-		aboutCard.addEventListener('click', () => {
-			window.location.href = 'about.html';
-		});
-		aboutCard.addEventListener('keydown', (e) => {
-			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'about.html'; }
-		});
-
-		const feedbackCard = document.getElementById('feedback-card');
-		feedbackCard.addEventListener('click', () => {
-			window.location.href = 'feedback.html';
-		});
-		feedbackCard.addEventListener('keydown', (e) => {
-			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = 'feedback.html'; }
-		});
+	const isHome = (location.pathname.split('/').pop() || '').toLowerCase() === 'home.html';
+	if (isHome && 'speechSynthesis' in window) {
+		const utterance = new SpeechSynthesisUtterance(`Welcome home, ${firstName}! You can say go to upload to process a new video, or say go to detections to review your history. You can also say go to profile to change your settings.`);
+		utterance.rate = 1.2;
+		utterance.volume = 0.8;
+		window.speechSynthesis.speak(utterance);
 	}
 });

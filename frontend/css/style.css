@@ -227,6 +227,12 @@ body {
   color: hsl(var(--muted-foreground));
   line-height: 1.5;
 }
+/* Ensure anchor cards render like blocks without underlines */
+.stat-card-modern {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
 .feature-section-spacious {
   max-width: 1200px;
   margin: 0 auto 4rem;
@@ -814,6 +820,23 @@ label {
   color: hsl(var(--muted-foreground));
   line-height: 1.6;
 }
+/* Actions grid on About page: 4 cards should balance 2x2 and 4 in a row */
+@media (min-width: 640px) {
+  .actions-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .actions-grid { grid-template-columns: repeat(4, 1fr); }
+}
+/* Home page: ensure four quick-action cards balance nicely */
+@media (min-width: 640px) {
+  .home-container .stats-grid-spacious { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .home-container .stats-grid-spacious { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Anchor cards should look like stat cards without underlines */
+a.stat-card-modern { display: block; text-decoration: none; color: inherit; }
 .stat-icon-large {
   width: 64px;
   height: 64px;
