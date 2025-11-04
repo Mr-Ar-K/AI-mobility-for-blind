@@ -2,6 +2,14 @@ import cv2
 import numpy as np
 import torch
 from ultralytics import YOLO
+import cv2
+import numpy as np
+try:
+    import imageio
+    import imageio_ffmpeg
+    _HAS_IMAGEIO_FFMPEG = True
+except Exception:
+    _HAS_IMAGEIO_FFMPEG = False
 from . import detection_logic  # Import from our new logic file
 
 # Dynamic performance optimization based on available hardware
@@ -13,7 +21,7 @@ def get_optimal_settings():
         # GPU settings - more aggressive processing
         gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)  # GB
         return {
-            'TARGET_FPS': 8 if gpu_memory > 4 else 5,  # Process more frames
+            'TARGET_FPS': 9 if gpu_memory > 4 else 6,  # Process more frames
             'YOLO_IMGSZ': 640,  # Higher resolution for better accuracy
             'YOLO_CONF': 0.4,
             'YOLO_IOU': 0.5,
@@ -24,7 +32,7 @@ def get_optimal_settings():
         # CPU settings - conservative for smooth performance
         cpu_count = torch.get_num_threads()
         return {
-            'TARGET_FPS': 4 if cpu_count >= 8 else 3,
+            'TARGET_FPS': 5 if cpu_count >= 8 else 4,
             'YOLO_IMGSZ': 480,  # Balanced resolution
             'YOLO_CONF': 0.45,
             'YOLO_IOU': 0.6,
@@ -52,12 +60,61 @@ COLORS = {
     'default': (255, 255, 255)   # White
 }
 
-# Robust VideoWriter opener with codec fallbacks for Windows environments
+class _FrameWriter:
+    """Unified frame writer that wraps either imageio-ffmpeg or OpenCV VideoWriter."""
+    def __init__(self, writer, mode: str, frame_size: tuple[int, int], fps: float):
+        self._writer = writer
+        self._mode = mode  # 'imageio' or 'cv2'
+        self._size = frame_size
+        self._fps = fps
+    def write(self, frame: np.ndarray):
+        if self._mode == 'imageio':
+            # Convert BGR -> RGB for imageio/ffmpeg
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            self._writer.append_data(rgb)
+        else:
+            self._writer.write(frame)
+    def release(self):
+        if self._mode == 'imageio':
+            try:
+                self._writer.close()
+            except Exception:
+                pass
+        else:
+            try:
+                self._writer.release()
+            except Exception:
+                pass
+
+
 def _open_video_writer(output_path: str, fps: float, frame_size: tuple[int, int]):
-    """Try multiple codecs to ensure browser-playable output without extra deps.
-    Preference order: H.264 variants then MPEG-4/XVID then MJPG.
-    """
-    # Only use codecs that do NOT require OpenH264 DLL
+    """Open a browser-playable MP4 writer. Prefer imageio-ffmpeg (H.264), fallback to OpenCV codecs."""
+    # Prefer imageio-ffmpeg if available to produce H.264/yuv420p MP4
+    if _HAS_IMAGEIO_FFMPEG and output_path.lower().endswith('.mp4'):
+        try:
+            writer = imageio.get_writer(
+                output_path,
+                fps=fps,
+                codec='libx264',
+                format='ffmpeg',
+                output_params=[
+                    '-pix_fmt', 'yuv420p',
+                    '-movflags', '+faststart',
+                    # Compatibility/performance tuning
+                    '-preset', 'veryfast',    # speed up encoding
+                    '-crf', '23',             # reasonable quality-size tradeoff
+                    '-profile:v', 'baseline', # broad device compatibility
+                    '-level', '3.0',
+                    '-g', str(max(24, int(fps) * 2) if fps else 48),  # GOP size
+                    '-bf', '0',               # disable B-frames for some players
+                ],
+            )
+            print("Using imageio-ffmpeg (libx264) for MP4 output")
+            return _FrameWriter(writer, 'imageio', frame_size, fps), 'libx264'
+        except Exception as e:
+            print(f"imageio-ffmpeg unavailable or failed: {e}. Falling back to OpenCV VideoWriter.")
+
+    # Fallback to OpenCV VideoWriter with safer codecs
     codec_candidates = [
         ('mp4v', 'MPEG-4 Part 2 (mp4v)'),
         ('XVID', 'Xvid (xvid)'),
@@ -70,7 +127,7 @@ def _open_video_writer(output_path: str, fps: float, frame_size: tuple[int, int]
             writer = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
             if writer.isOpened():
                 print(f"VideoWriter initialized with codec {fourcc_name} - {desc}")
-                return writer, fourcc_name
+                return _FrameWriter(writer, 'cv2', frame_size, fps), fourcc_name
             else:
                 try:
                     writer.release()
@@ -208,18 +265,27 @@ def run_detection_with_video(video_path: str, output_video_path: str, model: YOL
         frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS) or 30
+        # Sanitize FPS to a sane, browser-friendly range (10..60) and use integer
+        try:
+            fps = int(max(10, min(60, round(float(fps) if fps else 30))))
+        except Exception:
+            fps = 30
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         
         if not cap.isOpened():
             print(f"Error: Could not open video file {video_path}")
             return ["Error: Could not open video file."]
 
-        # Setup video writer for output at ORIGINAL resolution.
-        # Try H.264 first; if unavailable (OpenH264 DLL missing), fall back to other codecs.
-        out, chosen_codec = _open_video_writer(output_video_path, fps, (frame_w, frame_h))
+        # Setup video writer at original resolution, but ensure even dimensions for yuv420p encoders
+        out_w = frame_w - (frame_w % 2)
+        out_h = frame_h - (frame_h % 2)
+        if (out_w != frame_w) or (out_h != frame_h):
+            print(f"Adjusting output size to even dimensions for encoder: {frame_w}x{frame_h} -> {out_w}x{out_h}")
+        # Try H.264 first (via imageio-ffmpeg); fallback to other codecs.
+        out, chosen_codec = _open_video_writer(output_video_path, fps, (out_w, out_h))
 
         print(f"Creating annotated video: {output_video_path} (codec: {chosen_codec})")
-        print(f"Input: {frame_w}x{frame_h}, Output: {frame_w}x{frame_h}, Total frames: {total_frames}")
+        print(f"Input: {frame_w}x{frame_h}, Output: {out_w}x{out_h}, FPS: {fps}, Total frames: {total_frames}")
 
         # Dynamic styling for clear, visible boxes and labels
         box_thickness = max(3, int(round(min(frame_w, frame_h) / 200)))
@@ -234,12 +300,19 @@ def run_detection_with_video(video_path: str, output_video_path: str, model: YOL
             if not ret:
                 break
 
-            # Optionally resize frame for lower CPU load
+            # Optionally resize a COPY for lower CPU load, but keep original frame size for output
             process_frame = frame
             if min(frame_w, frame_h) > 640:
-                process_frame = cv2.resize(frame, (640, int(640 * frame_h / frame_w)))
+                # compute resized dimensions preserving aspect ratio
+                if frame_w <= frame_h:
+                    new_w = 640
+                    new_h = int(round(frame_h * (640.0 / frame_w)))
+                else:
+                    new_h = 640
+                    new_w = int(round(frame_w * (640.0 / frame_h)))
+                process_frame = cv2.resize(frame, (new_w, new_h))
 
-            annotated_frame = process_frame.copy()
+            annotated_frame = frame.copy()
             detections = []
 
             # ========== Run Single Custom YOLOv8n Model ========== 
@@ -253,9 +326,16 @@ def run_detection_with_video(video_path: str, output_video_path: str, model: YOL
                 device=DEVICE
             )
 
+            # Scale factors to map detections back to original frame size
+            scale_x = frame_w / process_frame.shape[1]
+            scale_y = frame_h / process_frame.shape[0]
+
             for r in results:
                 for box in r.boxes:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    # Map coords back to original frame size
+                    x1 *= scale_x; x2 *= scale_x
+                    y1 *= scale_y; y2 *= scale_y
                     conf = float(box.conf[0])
                     cls_id = int(box.cls[0])
 
@@ -294,6 +374,9 @@ def run_detection_with_video(video_path: str, output_video_path: str, model: YOL
                 if audio_message:
                     audio_log.append(audio_message)
             processed_frames += 1
+            # Crop to even writer size if needed (encoder requirement)
+            if annotated_frame.shape[1] != out_w or annotated_frame.shape[0] != out_h:
+                annotated_frame = annotated_frame[0:out_h, 0:out_w]
             out.write(annotated_frame)
             frame_count += 1
             if frame_count % 30 == 0:

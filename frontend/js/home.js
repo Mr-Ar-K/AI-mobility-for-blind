@@ -10,6 +10,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 		logoutButton.addEventListener('click', () => {
 			handleLogout(); // This function is from api.js
 		});
+		// Ensure keyboard accessibility
+		logoutButton.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				handleLogout();
+			}
+		});
 	}
 
 	let firstName = 'User';

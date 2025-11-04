@@ -70,11 +70,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 				videoPlayer.style.maxWidth = '640px';
 				videoPlayer.style.borderRadius = '8px';
 				videoPlayer.style.backgroundColor = '#000';
+				videoPlayer.preload = 'metadata'; // fast first preview
 				const videoUrl = `${API_URL}/history/video/${item.id}`;
 				console.log('Video URL:', videoUrl);
-				// Backend serves video at /history/video/{id}
-				videoPlayer.src = videoUrl;
-				videoPlayer.preload = 'metadata';
+				// Use a <source> with explicit MIME type for better compatibility
+				const source = document.createElement('source');
+				source.src = videoUrl;
+				source.type = 'video/mp4';
+				videoPlayer.appendChild(source);
 				
 				// Add loading/error feedback
 				videoPlayer.onloadstart = function() {
@@ -94,6 +97,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 					errorMsg.className = 'error-text';
 					errorMsg.textContent = `⚠️ Could not load video (Error ${videoPlayer.error?.code || 'unknown'})`;
 					videoContainer.appendChild(errorMsg);
+					// Fallback: show download link so user can open in native player
+					const dl = document.createElement('a');
+					dl.href = videoUrl;
+					dl.textContent = 'Download video';
+					dl.style.display = 'inline-block';
+					dl.style.marginTop = '8px';
+					videoContainer.appendChild(dl);
 				};
 				
 				videoContainer.appendChild(videoPlayer);

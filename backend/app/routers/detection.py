@@ -11,6 +11,7 @@ from ultralytics import YOLO
 from starlette.concurrency import run_in_threadpool
 
 from ..db import database, models, schemas
+from ..db.database import SessionLocal
 from ..services import video_processor, audio_generator
 from ..core.config import settings
 
@@ -43,6 +44,102 @@ def get_user_storage_path(username: str, timestamp: datetime) -> str:
 # Dependency to get the loaded model from app state
 def get_model(request: Request):
     return request.app.state.model
+
+
+# Background task: process video and update progress_store while running
+def _process_video_task(
+    task_id: str,
+    temp_video_path: str,
+    saved_video_path: str,
+    model: YOLO,
+    lang: str,
+    user_id: int,
+    username: str,
+):
+    db = SessionLocal()
+    detection_timestamp = datetime.now()
+    try:
+        start_time = time.time()
+
+        # Initial processing status
+        progress_store[task_id] = {
+            "status": "processing",
+            "progress": 20,
+            "message": "Detecting objects in video...",
+            "estimated_time": None,
+        }
+
+        def report_progress(pct: float, message: str = None):
+            progress_store[task_id] = {
+                "status": "processing",
+                "progress": max(0, min(100, int(pct))),
+                "message": message or "Processing video...",
+                "estimated_time": None,
+            }
+
+        # Run detection + annotated video creation
+        audio_results_list = video_processor.run_detection_with_video(
+            temp_video_path, saved_video_path, model, report_progress
+        )
+
+        progress_store[task_id] = {
+            "status": "processing",
+            "progress": 70,
+            "message": "Detection complete, generating audio...",
+            "estimated_time": None,
+        }
+
+        # Generate audio
+        generator = audio_generator.AudioGenerator(language=lang or 'en', pause_duration=250)
+        temp_audio_path = generator.generate_audio_quick(audio_results_list)
+
+        # Move audio to same directory as video
+        user_storage_dir = os.path.dirname(saved_video_path)
+        audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"
+        saved_audio_path = os.path.join(user_storage_dir, audio_filename)
+        shutil.move(temp_audio_path, saved_audio_path)
+
+        # Save history
+        try:
+            history_entry = models.DetectionHistory(
+                user_id=user_id,
+                results=audio_results_list,
+                video_path=saved_video_path,
+                audio_path=saved_audio_path,
+                media_type="video",
+            )
+            db.add(history_entry)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"Failed to save history: {e}")
+
+        total_time = time.time() - start_time
+        progress_store[task_id] = {
+            "status": "completed",
+            "progress": 100,
+            "message": f"Processing complete in {total_time:.1f} seconds",
+            "estimated_time": 0,
+            "total_time": total_time,
+        }
+    except Exception as e:
+        progress_store[task_id] = {
+            "status": "failed",
+            "progress": 0,
+            "message": f"Processing failed: {e}",
+            "estimated_time": None,
+        }
+        print(f"Background task error: {e}")
+    finally:
+        try:
+            if os.path.exists(temp_video_path):
+                os.remove(temp_video_path)
+        except Exception as e:
+            print(f"Warning: Failed to delete uploaded file {temp_video_path}: {e}")
+        try:
+            db.close()
+        except Exception:
+            pass
 
 @router.get("/test-models")
 async def test_models(request: Request):
@@ -81,7 +178,8 @@ async def detect_video(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(database.get_db),
-    lang: Optional[str] = 'en'
+    lang: Optional[str] = 'en',
+    background_tasks: BackgroundTasks = None,
 ):
     # Get the single model from app state
     model = request.app.state.model
@@ -130,116 +228,36 @@ async def detect_video(
     user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
     
     # 3.5. Define output video path (annotated version)
-    video_filename = f"video_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
+    # Force MP4 container for browser compatibility
+    video_filename = f"video_{detection_timestamp.strftime('%H-%M-%S')}.mp4"
     saved_video_path = os.path.join(user_storage_dir, video_filename)
     
-    # 4. Process the video with all three models and create annotated video
-    print(f"Starting video detection processing...")
+    # 4. Schedule background processing and return immediately
+    print(f"Starting video detection processing in background...")
+    if background_tasks is None:
+        raise HTTPException(status_code=500, detail="Background tasks not available")
+
+    # Mark as queued/processing so frontend can start polling
     progress_store[task_id] = {
         "status": "processing",
-        "progress": 20,
-        "message": "Detecting objects in video...",
-        "estimated_time": None
+        "progress": 15,
+        "message": "Queued for processing...",
+        "estimated_time": None,
     }
-    
-    detection_start = time.time()
-    try:
-        # Limit concurrent processing to avoid CPU overload
-        async with request.app.state.semaphore:
-            # Progress callback to update frontend more frequently
-            def report_progress(pct: float, message: str = None):
-                progress_store[task_id] = {
-                    "status": "processing",
-                    "progress": max(0, min(100, int(pct))),
-                    "message": message or "Processing video...",
-                    "estimated_time": None
-                }
 
-            audio_results_list = await run_in_threadpool(
-                video_processor.run_detection_with_video,
-                temp_video_path,
-                saved_video_path,
-                model,
-                report_progress
-            )
-        detection_time = time.time() - detection_start
-        print(f"Detection completed in {detection_time:.2f} seconds")
-        
-        progress_store[task_id] = {
-            "status": "processing",
-            "progress": 70,
-            "message": "Detection complete, generating audio...",
-            "estimated_time": None
-        }
-        
-        # DELETE UPLOADED VIDEO IMMEDIATELY AFTER PROCESSING
-        try:
-            os.remove(temp_video_path)
-            print(f"Deleted uploaded video: {temp_video_path}")
-        except Exception as e:
-            print(f"Warning: Failed to delete uploaded file {temp_video_path}: {e}")
-            
-    except Exception as e:
-        # Clean up on error
-        progress_store[task_id] = {"status": "failed", "progress": 0, "message": f"Detection failed: {e}", "estimated_time": None}
-        try:
-            os.remove(temp_video_path)
-        except:
-            pass
-        raise HTTPException(status_code=500, detail=f"Failed during video processing: {e}")
-    
-    # 5. Generate audio file and save to user's directory
-    saved_audio_path = None
-    audio_start = time.time()
-    try:
-        # Speed up audio generation with shorter pauses
-        generator = audio_generator.AudioGenerator(language=lang or 'en', pause_duration=250)
-        temp_audio_path = generator.generate_audio_quick(audio_results_list)
-        
-        # Move audio to permanent storage
-        audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"
-        saved_audio_path = os.path.join(user_storage_dir, audio_filename)
-        shutil.move(temp_audio_path, saved_audio_path)
-        audio_time = time.time() - audio_start
-        print(f"Audio generated and saved in {audio_time:.2f} seconds: {saved_audio_path}")
-    except Exception as e:
-        print(f"Warning: Failed to generate/save audio: {e}")
-        # Continue even if audio generation fails
+    background_tasks.add_task(
+        _process_video_task,
+        task_id,
+        temp_video_path,
+        saved_video_path,
+        request.app.state.model,
+        lang or 'en',
+        user_id,
+        user.username,
+    )
 
-    # 6. Save results to history (including video and audio paths)
-    try:
-        history_entry = models.DetectionHistory(
-            user_id=user_id,
-            results=audio_results_list,
-            video_path=saved_video_path,
-            audio_path=saved_audio_path,
-            media_type="video"
-        )
-        db.add(history_entry)
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        print(f"Failed to save history: {e}")
-        # We don't raise an error here, as the user should still get their results
-
-    # 7. Return the audio strings and timing information
-    total_time = time.time() - start_time
-    print(f"Total processing time: {total_time:.2f} seconds")
-    
-    progress_store[task_id] = {
-        "status": "completed",
-        "progress": 100,
-        "message": f"Processing complete in {total_time:.1f} seconds",
-        "estimated_time": 0,
-        "total_time": total_time
-    }
-    
-    return {
-        "task_id": task_id,
-        "results": audio_results_list,
-        "processing_time": round(total_time, 2),
-        "message": "Detection completed successfully"
-    }
+    # Respond with task id immediately
+    return {"task_id": task_id, "message": "Processing started"}
 
 
 @router.post("/{user_id}/with-audio", response_model=Dict)
@@ -284,7 +302,8 @@ async def detect_video_with_audio(
     user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
     
     # 4. Define output video path for annotated video
-    video_filename = f"video_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
+    # Force MP4 container for browser compatibility
+    video_filename = f"video_{detection_timestamp.strftime('%H-%M-%S')}.mp4"
     saved_video_path = os.path.join(user_storage_dir, video_filename)
     
     # 5. Process the video with all three models and save with bounding boxes

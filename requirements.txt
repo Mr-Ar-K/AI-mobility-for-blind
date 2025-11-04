@@ -10,3 +10,5 @@ pydantic-settings
 gTTS
 pydub
 #audioop-lts  # Required for pydub on Python 3.13+
+imageio
+imageio-ffmpeg
