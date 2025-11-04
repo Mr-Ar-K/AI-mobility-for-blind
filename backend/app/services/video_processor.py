@@ -1,41 +1,92 @@
 import cv2
 import numpy as np
+import torch
 from ultralytics import YOLO
 from . import detection_logic  # Import from our new logic file
 
-# Tuning constants for CPU performance optimization
-TARGET_FPS = 3   # process ~3 frames per second for CPU efficiency
-YOLO_IMGSZ = 416 # smaller resolution for faster CPU inference (does not change output video resolution)
-# Use a balanced confidence threshold to reduce noise and speed up NMS
-YOLO_CONF = 0.45
-YOLO_IOU = 0.6
-YOLO_MAX_DET = 100
+# Dynamic performance optimization based on available hardware
+def get_optimal_settings():
+    """Dynamically determine optimal settings based on GPU/CPU availability"""
+    has_gpu = torch.cuda.is_available()
+    
+    if has_gpu:
+        # GPU settings - more aggressive processing
+        gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)  # GB
+        return {
+            'TARGET_FPS': 8 if gpu_memory > 4 else 5,  # Process more frames
+            'YOLO_IMGSZ': 640,  # Higher resolution for better accuracy
+            'YOLO_CONF': 0.4,
+            'YOLO_IOU': 0.5,
+            'YOLO_MAX_DET': 150,
+            'DEVICE': 'cuda'
+        }
+    else:
+        # CPU settings - conservative for smooth performance
+        cpu_count = torch.get_num_threads()
+        return {
+            'TARGET_FPS': 4 if cpu_count >= 8 else 3,
+            'YOLO_IMGSZ': 480,  # Balanced resolution
+            'YOLO_CONF': 0.45,
+            'YOLO_IOU': 0.6,
+            'YOLO_MAX_DET': 100,
+            'DEVICE': 'cpu'
+        }
 
-# Color scheme for bounding boxes (BGR format for OpenCV)
+# Get optimal settings
+SETTINGS = get_optimal_settings()
+TARGET_FPS = SETTINGS['TARGET_FPS']
+YOLO_IMGSZ = SETTINGS['YOLO_IMGSZ']
+YOLO_CONF = SETTINGS['YOLO_CONF']
+YOLO_IOU = SETTINGS['YOLO_IOU']
+YOLO_MAX_DET = SETTINGS['YOLO_MAX_DET']
+DEVICE = SETTINGS['DEVICE']
+
+print(f"🚀 Video Processor initialized with {DEVICE.upper()} - Target FPS: {TARGET_FPS}, Image Size: {YOLO_IMGSZ}")
+
+# Color scheme for bounding boxes (BGR format for OpenCV) - Only 4 classes now
 COLORS = {
-    'Person': (0, 255, 0),       # Green
     'Car': (255, 0, 0),          # Blue
-    'Bus': (255, 0, 0),          # Blue
-    'Truck': (255, 0, 0),        # Blue
-    'Motorcycle': (255, 0, 0),   # Blue
-    'Bicycle': (0, 255, 255),    # Yellow
+    'Person': (0, 255, 0),       # Green
     'Green Light': (0, 255, 0),  # Green
-    'Red Light': (0, 0, 255),    # Red
-    'Yellow Light': (0, 255, 255), # Yellow
-    'Zebra Crossing': (255, 255, 0), # Cyan
+    'zebra crossing': (0, 255, 255), # Yellow
     'default': (255, 255, 255)   # White
 }
 
-def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_zebra: YOLO) -> list[str]:
+# Robust VideoWriter opener with codec fallbacks for Windows environments
+def _open_video_writer(output_path: str, fps: float, frame_size: tuple[int, int]):
+    """Try multiple codecs to ensure browser-playable output without extra deps.
+    Preference order: H.264 variants then MPEG-4/XVID then MJPG.
     """
-    Processes a video file using three models in sequence and returns a list of audio descriptions.
+    # Only use codecs that do NOT require OpenH264 DLL
+    codec_candidates = [
+        ('mp4v', 'MPEG-4 Part 2 (mp4v)'),
+        ('XVID', 'Xvid (xvid)'),
+        ('MJPG', 'Motion JPEG (mjpg)')
+    ]
+    last_err = None
+    for fourcc_name, desc in codec_candidates:
+        try:
+            fourcc = cv2.VideoWriter_fourcc(*fourcc_name)
+            writer = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
+            if writer.isOpened():
+                print(f"VideoWriter initialized with codec {fourcc_name} - {desc}")
+                return writer, fourcc_name
+            else:
+                try:
+                    writer.release()
+                except Exception:
+                    pass
+        except Exception as e:
+            last_err = e
+            continue
+    raise RuntimeError(f"Failed to initialize VideoWriter for {output_path}. Last error: {last_err}")
+
+def run_detection(video_path: str, model: YOLO) -> list[str]:
+    """
+    Processes a video file using single custom YOLOv8n model and returns a list of audio descriptions.
     
-    Multi-model detection pipeline:
-    1. YOLOv8m: Detects general objects (vehicles, people, etc.) - excluding traffic lights (class 9)
-    2. Traffic Lights Model: Detects traffic light colors (green=2, red=3, yellow=4)
-    3. Zebra Crossing Model: Detects zebra crossings (class 8)
-    
-    All detections are merged and processed together for comprehensive scene understanding.
+    Single-model detection pipeline:
+    Detects 4 classes: Car, Person, Green Light, zebra crossing
     """
     
     # These are reset for every video processed
@@ -67,26 +118,25 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
             
             detections = []
             
-            # ========== STEP 1: Run YOLOv8m (General Objects) ==========
-            # Exclude class 9 (traffic lights) as we have a specialist model for that
-            yolo_classes_to_keep = [i for i in range(80) if i != 9]
-            results_yolo = model_yolo(
+            # ========== Run Single Custom YOLOv8n Model ==========
+            # Detects: Car (0), Person (1), Green Light (2), zebra crossing (3)
+            results = model(
                 frame,
-                classes=yolo_classes_to_keep,
                 conf=YOLO_CONF,
                 iou=YOLO_IOU,
                 imgsz=YOLO_IMGSZ,
                 max_det=YOLO_MAX_DET,
-                verbose=False
+                verbose=False,
+                device=DEVICE
             )
             
-            for r in results_yolo:
+            for r in results:
                 for box in r.boxes:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                     conf = float(box.conf[0])
                     cls_id = int(box.cls[0])
                     
-                    # Map YOLO class IDs to our labels
+                    # Map class IDs to our labels
                     label = detection_logic.YOLO_CLASS_NAMES.get(cls_id, f"Object_{cls_id}")
                     
                     cx = (x1 + x2) / 2
@@ -102,78 +152,8 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
                         'horiz': horiz, 'depth': depth, 'dist_score': dist_score
                     })
             
-            # ========== STEP 2: Run Traffic Lights Model ==========
-            # Only keep classes 2, 3, 4 (green, red, yellow)
-            light_classes_to_keep = [2, 3, 4]
-            results_lights = model_lights(
-                frame,
-                classes=light_classes_to_keep,
-                conf=YOLO_CONF,
-                iou=YOLO_IOU,
-                imgsz=YOLO_IMGSZ,
-                max_det=YOLO_MAX_DET,
-                verbose=False
-            )
-            
-            for r in results_lights:
-                for box in r.boxes:
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                    conf = float(box.conf[0])
-                    cls_id = int(box.cls[0])
-                    
-                    # Map traffic light class IDs
-                    label = detection_logic.TRAFFIC_LIGHT_CLASS_NAMES.get(cls_id, f"Light_{cls_id}")
-                    
-                    cx = (x1 + x2) / 2
-                    cy = (y1 + y2) / 2
-                    
-                    horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
-                    dist_score = detection_logic.calculate_distance_score(y2, frame_h)
-                    
-                    detections.append({
-                        'label': label, 'conf': conf,
-                        'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
-                        'cx': cx, 'cy': cy,
-                        'horiz': horiz, 'depth': depth, 'dist_score': dist_score
-                    })
-            
-            # ========== STEP 3: Run Zebra Crossing Model ==========
-            # Only keep class 8 (zebra crossing)
-            zebra_classes_to_keep = [8]
-            results_zebra = model_zebra(
-                frame,
-                classes=zebra_classes_to_keep,
-                conf=YOLO_CONF,
-                iou=YOLO_IOU,
-                imgsz=YOLO_IMGSZ,
-                max_det=YOLO_MAX_DET,
-                verbose=False
-            )
-            
-            for r in results_zebra:
-                for box in r.boxes:
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                    conf = float(box.conf[0])
-                    cls_id = int(box.cls[0])
-                    
-                    # Map zebra crossing class ID
-                    label = detection_logic.ZEBRA_CLASS_NAMES.get(cls_id, f"Crossing_{cls_id}")
-                    
-                    cx = (x1 + x2) / 2
-                    cy = (y1 + y2) / 2
-                    
-                    horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
-                    dist_score = detection_logic.calculate_distance_score(y2, frame_h)
-                    
-                    detections.append({
-                        'label': label, 'conf': conf,
-                        'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
-                        'cx': cx, 'cy': cy,
-                        'horiz': horiz, 'depth': depth, 'dist_score': dist_score
-                    })
-            
-            # ========== STEP 4: Process Merged Detections ==========
-            # Group all detections from all three models
+            # ========== Process Detections ==========
+            # Group all detections
             grouped = detection_logic.group_detections(detections, frame_w, frame_h)
             
             # Generate audio guidance based on all detections
@@ -202,7 +182,7 @@ def run_detection(video_path: str, model_yolo: YOLO, model_lights: YOLO, model_z
     return audio_log
 
 
-def run_detection_with_video(video_path: str, output_video_path: str, model_yolo: YOLO, model_lights: YOLO, model_zebra: YOLO, on_progress=None) -> list[str]:
+def run_detection_with_video(video_path: str, output_video_path: str, model: YOLO, on_progress=None) -> list[str]:
     """
     Processes a video file and creates an annotated output video with bounding boxes.
     Returns the same audio descriptions as run_detection().
@@ -210,9 +190,8 @@ def run_detection_with_video(video_path: str, output_video_path: str, model_yolo
     Args:
         video_path: Path to input video
         output_video_path: Path where annotated video will be saved
-        model_yolo: YOLOv8m model for general objects
-        model_lights: Traffic lights detection model
-        model_zebra: Zebra crossing detection model
+        model: Custom YOLOv8n model for 4 classes (Car, Person, Green Light, zebra crossing)
+        on_progress: Optional callback for progress updates
     
     Returns:
         List of audio description strings
@@ -235,173 +214,88 @@ def run_detection_with_video(video_path: str, output_video_path: str, model_yolo
             print(f"Error: Could not open video file {video_path}")
             return ["Error: Could not open video file."]
 
-        # Setup video writer for output at ORIGINAL resolution (do not change user video resolution)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_w, frame_h))
+        # Setup video writer for output at ORIGINAL resolution.
+        # Try H.264 first; if unavailable (OpenH264 DLL missing), fall back to other codecs.
+        out, chosen_codec = _open_video_writer(output_video_path, fps, (frame_w, frame_h))
 
-        print(f"Creating annotated video: {output_video_path}")
+        print(f"Creating annotated video: {output_video_path} (codec: {chosen_codec})")
         print(f"Input: {frame_w}x{frame_h}, Output: {frame_w}x{frame_h}, Total frames: {total_frames}")
 
-        # Calculate frame skip for CPU optimization - only process every Nth frame
-        frame_skip = max(1, int(round(fps / TARGET_FPS)))
         # Dynamic styling for clear, visible boxes and labels
         box_thickness = max(3, int(round(min(frame_w, frame_h) / 200)))
         font_scale = max(0.6, min(1.5, box_thickness / 4.5))
         text_thickness = max(1, box_thickness // 2)
-        
+
+        # Allow lower model resolution for reduced CPU load
+        model_imgsz = YOLO_IMGSZ if YOLO_IMGSZ <= min(frame_w, frame_h) else min(frame_w, frame_h)
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            
-            # Only run detection on sampled frames for CPU efficiency
-            should_process = (frame_count % frame_skip == 0)
-            
-            if should_process:
-                # Make a copy for drawing
-                annotated_frame = frame.copy()
-                detections = []
-                
-                # ========== STEP 1: Run YOLOv8m (General Objects) ==========
-                yolo_classes_to_keep = [i for i in range(80) if i != 9]
-                results_yolo = model_yolo(
-                    frame,
-                    classes=yolo_classes_to_keep,
-                    conf=YOLO_CONF,
-                    iou=YOLO_IOU,
-                    imgsz=YOLO_IMGSZ,
-                    max_det=YOLO_MAX_DET,
-                    verbose=False
-                )
-                
-                for r in results_yolo:
-                    for box in r.boxes:
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        conf = float(box.conf[0])
-                        cls_id = int(box.cls[0])
-                        
-                        label = detection_logic.YOLO_CLASS_NAMES.get(cls_id, f"Object_{cls_id}")
-                        
-                        cx = (x1 + x2) / 2
-                        cy = (y1 + y2) / 2
-                        
-                        horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
-                        dist_score = detection_logic.calculate_distance_score(y2, frame_h)
-                        
-                        detections.append({
-                            'label': label, 'conf': conf,
-                            'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
-                            'cx': cx, 'cy': cy,
-                            'horiz': horiz, 'depth': depth, 'dist_score': dist_score,
-                            'model': 'yolo'
-                        })
-            
-                # ========== STEP 2: Run Traffic Lights Model ==========
-                light_classes_to_keep = [2, 3, 4]
-                results_lights = model_lights(
-                    frame,
-                    classes=light_classes_to_keep,
-                    conf=YOLO_CONF,
-                    iou=YOLO_IOU,
-                    imgsz=YOLO_IMGSZ,
-                    max_det=YOLO_MAX_DET,
-                    verbose=False
-                )
-                
-                for r in results_lights:
-                    for box in r.boxes:
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        conf = float(box.conf[0])
-                        cls_id = int(box.cls[0])
-                        
-                        label = detection_logic.TRAFFIC_LIGHT_CLASS_NAMES.get(cls_id, f"Light_{cls_id}")
-                        
-                        cx = (x1 + x2) / 2
-                        cy = (y1 + y2) / 2
-                        
-                        horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
-                        dist_score = detection_logic.calculate_distance_score(y2, frame_h)
-                        
-                        detections.append({
-                            'label': label, 'conf': conf,
-                            'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
-                            'cx': cx, 'cy': cy,
-                            'horiz': horiz, 'depth': depth, 'dist_score': dist_score,
-                            'model': 'lights'
-                        })
-            
-                # ========== STEP 3: Run Zebra Crossing Model ==========
-                zebra_classes_to_keep = [8]
-                results_zebra = model_zebra(
-                    frame,
-                    classes=zebra_classes_to_keep,
-                    conf=YOLO_CONF,
-                    iou=YOLO_IOU,
-                    imgsz=YOLO_IMGSZ,
-                    max_det=YOLO_MAX_DET,
-                    verbose=False
-                )
-                
-                for r in results_zebra:
-                    for box in r.boxes:
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        conf = float(box.conf[0])
-                        cls_id = int(box.cls[0])
-                        
-                        label = detection_logic.ZEBRA_CLASS_NAMES.get(cls_id, f"Crossing_{cls_id}")
-                        
-                        cx = (x1 + x2) / 2
-                        cy = (y1 + y2) / 2
-                        
-                        horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
-                        dist_score = detection_logic.calculate_distance_score(y2, frame_h)
-                        
-                        detections.append({
-                            'label': label, 'conf': conf,
-                            'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
-                            'cx': cx, 'cy': cy,
-                            'horiz': horiz, 'depth': depth, 'dist_score': dist_score,
-                            'model': 'zebra'
-                        })
-            
-                # ========== STEP 4: Draw Bounding Boxes ==========
-                for det in detections:
-                    x1, y1, x2, y2 = int(det['x1']), int(det['y1']), int(det['x2']), int(det['y2'])
-                    label = det['label']
-                    conf = det['conf']
-                    
-                    # Get color for this object type
-                    color = COLORS.get(label, COLORS['default'])
-                    
-                    # Draw bounding box with increased thickness for clarity
-                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, box_thickness)
-                    
-                    # Draw label background
-                    label_text = f"{label} {conf:.2f}"
-                    (text_w, text_h), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_thickness)
-                    cv2.rectangle(annotated_frame, (x1, max(0, y1 - text_h - 8)), (x1 + text_w + 6, y1), color, -1)
-                    
-                    # Draw label text
-                    cv2.putText(annotated_frame, label_text, (x1 + 3, max(12, y1 - 4)),
-                               cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), text_thickness)
-                
-                # ========== STEP 5: Generate Audio Messages ==========
-                grouped = detection_logic.group_detections(detections, frame_w, frame_h)
-                if detections:
-                    audio_message = detection_logic.generate_audio_message(grouped, frame_count, fps, detection_state)
-                    if audio_message:
-                        audio_log.append(audio_message)
-                processed_frames += 1
-                
-                # Write annotated frame to output video
-                out.write(annotated_frame)
-            else:
-                # For skipped frames, just write the original frame
-                out.write(frame)
-            
+
+            # Optionally resize frame for lower CPU load
+            process_frame = frame
+            if min(frame_w, frame_h) > 640:
+                process_frame = cv2.resize(frame, (640, int(640 * frame_h / frame_w)))
+
+            annotated_frame = process_frame.copy()
+            detections = []
+
+            # ========== Run Single Custom YOLOv8n Model ========== 
+            results = model(
+                process_frame,
+                conf=YOLO_CONF,
+                iou=YOLO_IOU,
+                imgsz=model_imgsz,
+                max_det=YOLO_MAX_DET,
+                verbose=False,
+                device=DEVICE
+            )
+
+            for r in results:
+                for box in r.boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                    conf = float(box.conf[0])
+                    cls_id = int(box.cls[0])
+
+                    label = detection_logic.YOLO_CLASS_NAMES.get(cls_id, f"Object_{cls_id}")
+
+                    cx = (x1 + x2) / 2
+                    cy = (y1 + y2) / 2
+
+                    horiz, depth = detection_logic.get_position(cx, cy, y2, frame_w, frame_h)
+                    dist_score = detection_logic.calculate_distance_score(y2, frame_h)
+
+                    detections.append({
+                        'label': label, 'conf': conf,
+                        'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
+                        'cx': cx, 'cy': cy,
+                        'horiz': horiz, 'depth': depth, 'dist_score': dist_score
+                    })
+
+            # ========== Draw Bounding Boxes ========== 
+            for det in detections:
+                x1, y1, x2, y2 = int(det['x1']), int(det['y1']), int(det['x2']), int(det['y2'])
+                label = det['label']
+                conf = det['conf']
+
+                color = COLORS.get(label, COLORS['default'])
+                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, box_thickness)
+                label_text = f"{label} {conf:.2f}"
+                (text_w, text_h), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_thickness)
+                cv2.rectangle(annotated_frame, (x1, max(0, y1 - text_h - 8)), (x1 + text_w + 6, y1), color, -1)
+                cv2.putText(annotated_frame, label_text, (x1 + 3, max(12, y1 - 4)),
+                           cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), text_thickness)
+
+            grouped = detection_logic.group_detections(detections, frame_w, frame_h)
+            if detections:
+                audio_message = detection_logic.generate_audio_message(grouped, frame_count, fps, detection_state)
+                if audio_message:
+                    audio_log.append(audio_message)
+            processed_frames += 1
+            out.write(annotated_frame)
             frame_count += 1
-            
-            # Show progress every 30 frames
             if frame_count % 30 == 0:
                 progress = (frame_count / max(1,total_frames)) * 100
                 msg = f"Processing frame {frame_count}/{total_frames}"

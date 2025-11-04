@@ -46,20 +46,17 @@ def get_model(request: Request):
 
 @router.get("/test-models")
 async def test_models(request: Request):
-    """Test endpoint to verify all models are loaded correctly"""
+    """Test endpoint to verify model is loaded correctly"""
     try:
-        model_yolo = request.app.state.model_yolo
-        model_lights = request.app.state.model_lights
-        model_zebra = request.app.state.model_zebra
+        model = request.app.state.model
         
         return {
             "status": "success",
-            "models_loaded": {
-                "yolov8m": str(type(model_yolo)),
-                "traffic_lights": str(type(model_lights)),
-                "zebra_crossing": str(type(model_zebra))
+            "model_loaded": {
+                "yolov8n_custom": str(type(model)),
+                "classes": ["Car", "Person", "Green Light", "zebra crossing"]
             },
-            "message": "All models are loaded and ready"
+            "message": "Model is loaded and ready"
         }
     except Exception as e:
         return {
@@ -86,10 +83,8 @@ async def detect_video(
     db: Session = Depends(database.get_db),
     lang: Optional[str] = 'en'
 ):
-    # Get all three models from app state
-    model_yolo = request.app.state.model_yolo
-    model_lights = request.app.state.model_lights
-    model_zebra = request.app.state.model_zebra
+    # Get the single model from app state
+    model = request.app.state.model
     
     # Generate task ID for progress tracking
     task_id = str(uuid.uuid4())
@@ -164,9 +159,7 @@ async def detect_video(
                 video_processor.run_detection_with_video,
                 temp_video_path,
                 saved_video_path,
-                model_yolo,
-                model_lights,
-                model_zebra,
+                model,
                 report_progress
             )
         detection_time = time.time() - detection_start
@@ -261,10 +254,8 @@ async def detect_video_with_audio(
     Process video and return both text results and audio file path.
     This endpoint is useful when you need the audio file immediately.
     """
-    # Get all three models from app state
-    model_yolo = request.app.state.model_yolo
-    model_lights = request.app.state.model_lights
-    model_zebra = request.app.state.model_zebra
+    # Get the single model from app state
+    model = request.app.state.model
     
     # 1. Check if user exists
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -305,9 +296,7 @@ async def detect_video_with_audio(
                 video_processor.run_detection_with_video,
                 temp_video_path,
                 saved_video_path,  # Save annotated video directly
-                model_yolo,
-                model_lights,
-                model_zebra,
+                model,
                 None
             )
         detection_time = time.time() - detection_start
@@ -415,267 +404,225 @@ async def generate_audio_from_text(text_list: List[str]):
         raise HTTPException(status_code=500, detail=f"Failed to generate audio: {str(e)}")
 
 
-    @router.post("/image/{user_id}", response_model=List[str])
-    async def detect_image(
-        user_id: int,
-        request: Request,
-        file: UploadFile = File(...),
-        db: Session = Depends(database.get_db)
-    ):
-        """
-        Process an uploaded image and detect objects.
-        Saves the image and audio to history.
-        """
-        # Get all three models from app state
-        model_yolo = request.app.state.model_yolo
-        model_lights = request.app.state.model_lights
-        model_zebra = request.app.state.model_zebra
+@router.post("/image/{user_id}", response_model=List[str])
+async def detect_image(
+    user_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Process an uploaded image and detect objects.
+    Saves the image and audio to history.
+    """
+    # Get the single model from app state
+    model = request.app.state.model
     
-        # 1. Check if user exists
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+    # 1. Check if user exists
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        # 2. Save image to a temporary file
-        file_extension = os.path.splitext(file.filename)[1]
-        if file_extension.lower() not in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']:
-            raise HTTPException(status_code=400, detail="Invalid image format. Supported: jpg, jpeg, png, bmp, webp")
+    # 2. Save image to a temporary file
+    file_extension = os.path.splitext(file.filename)[1]
+    if file_extension.lower() not in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']:
+        raise HTTPException(status_code=400, detail="Invalid image format. Supported: jpg, jpeg, png, bmp, webp")
     
-        temp_filename = f"{uuid.uuid4()}{file_extension}"
-        temp_image_path = os.path.join(TEMP_UPLOAD_DIR, temp_filename)
+    temp_filename = f"{uuid.uuid4()}{file_extension}"
+    temp_image_path = os.path.join(TEMP_UPLOAD_DIR, temp_filename)
 
-        try:
-            with open(temp_image_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to save image file: {e}")
-        finally:
-            file.file.close()
+    try:
+        with open(temp_image_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save image file: {e}")
+    finally:
+        file.file.close()
 
-        # 3. Run detection on the image
-        try:
-            # Run all three models on the image
-            detections = []
-        
-            # YOLO general object detection
-            results_yolo = model_yolo(temp_image_path)
-            for result in results_yolo:
-                for box in result.boxes:
-                    class_id = int(box.cls[0])
-                    confidence = float(box.conf[0])
-                    if confidence > 0.5:  # Confidence threshold
-                        class_name = result.names[class_id]
-                        detections.append(f"{class_name} detected")
-        
-            # Traffic lights detection
-            results_lights = model_lights(temp_image_path)
-            for result in results_lights:
-                for box in result.boxes:
-                    class_id = int(box.cls[0])
-                    confidence = float(box.conf[0])
-                    if confidence > 0.5:
-                        class_name = result.names[class_id]
-                        detections.append(f"traffic light {class_name}")
-        
-            # Zebra crossing detection
-            results_zebra = model_zebra(temp_image_path)
-            for result in results_zebra:
-                for box in result.boxes:
-                    confidence = float(box.conf[0])
-                    if confidence > 0.5:
-                        detections.append("zebra crossing detected")
-                        break
-        
-            # Remove duplicates and create audio results
-            audio_results_list = list(set(detections)) if detections else ["no objects detected"]
-        
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed during image processing: {e}")
+    # 3. Run detection on the image
+    try:
+        # Run single custom model on the image
+        detections = []
     
-        # 4. Get timestamp and create user storage directory
-        detection_timestamp = datetime.now()
-        user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
+        # Custom YOLOv8n: Car (0), Person (1), Green Light (2), zebra crossing (3)
+        results = model(temp_image_path, conf=0.5, verbose=False)
+        for result in results:
+            for box in result.boxes:
+                class_id = int(box.cls[0])
+                confidence = float(box.conf[0])
+                if confidence > 0.5:  # Confidence threshold
+                    class_name = result.names[class_id]
+                    detections.append(f"{class_name} detected")
     
-        # 5. Generate audio file and save to user's directory
-        saved_audio_path = None
-        try:
-            generator = audio_generator.AudioGenerator(pause_duration=700)
-            temp_audio_path = generator.generate_audio_quick(audio_results_list)
-        
-            # Move audio to permanent storage
-            audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"
-            saved_audio_path = os.path.join(user_storage_dir, audio_filename)
-            shutil.move(temp_audio_path, saved_audio_path)
-            print(f"Audio saved to: {saved_audio_path}")
-        except Exception as e:
-            print(f"Warning: Failed to generate/save audio: {e}")
-
-        # 6. Save image to user's directory
-        saved_image_path = None
-        try:
-            image_filename = f"image_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
-            saved_image_path = os.path.join(user_storage_dir, image_filename)
-            shutil.copy2(temp_image_path, saved_image_path)
-            print(f"Image saved to: {saved_image_path}")
-        except Exception as e:
-            print(f"Warning: Failed to save image to history: {e}")
-
-        # 7. Save results to history (including image and audio paths)
-        try:
-            history_entry = models.DetectionHistory(
-                user_id=user_id,
-                results=audio_results_list,
-                image_path=saved_image_path,
-                audio_path=saved_audio_path,
-                media_type="image"
-            )
-            db.add(history_entry)
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            print(f"Failed to save history: {e}")
-
-        # 8. Clean up the temporary image
-        try:
-            os.remove(temp_image_path)
-        except Exception as e:
-            print(f"Warning: Failed to delete temporary file {temp_image_path}: {e}")
-
-        # 9. Return the detection results to the frontend
-        return audio_results_list
-
-
-    @router.post("/image/{user_id}/with-audio", response_model=Dict)
-    async def detect_image_with_audio(
-        user_id: int,
-        request: Request,
-        file: UploadFile = File(...),
-        db: Session = Depends(database.get_db)
-    ):
-        """
-        Process image and return both text results and audio file path.
-        """
-        # Get all three models from app state
-        model_yolo = request.app.state.model_yolo
-        model_lights = request.app.state.model_lights
-        model_zebra = request.app.state.model_zebra
+        # Remove duplicates and create audio results
+        audio_results_list = list(set(detections)) if detections else ["no objects detected"]
     
-        # 1. Check if user exists
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        # 2. Save image to a temporary file
-        file_extension = os.path.splitext(file.filename)[1]
-        if file_extension.lower() not in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']:
-            raise HTTPException(status_code=400, detail="Invalid image format. Supported: jpg, jpeg, png, bmp, webp")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed during image processing: {e}")
     
-        temp_filename = f"{uuid.uuid4()}{file_extension}"
-        temp_image_path = os.path.join(TEMP_UPLOAD_DIR, temp_filename)
-
-        try:
-            with open(temp_image_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to save image file: {e}")
-        finally:
-            file.file.close()
-
-        # 3. Run detection on the image
-        try:
-            detections = []
-        
-            # YOLO general object detection
-            results_yolo = model_yolo(temp_image_path)
-            for result in results_yolo:
-                for box in result.boxes:
-                    class_id = int(box.cls[0])
-                    confidence = float(box.conf[0])
-                    if confidence > 0.5:
-                        class_name = result.names[class_id]
-                        detections.append(f"{class_name} detected")
-        
-            # Traffic lights detection
-            results_lights = model_lights(temp_image_path)
-            for result in results_lights:
-                for box in result.boxes:
-                    class_id = int(box.cls[0])
-                    confidence = float(box.conf[0])
-                    if confidence > 0.5:
-                        class_name = result.names[class_id]
-                        detections.append(f"traffic light {class_name}")
-        
-            # Zebra crossing detection
-            results_zebra = model_zebra(temp_image_path)
-            for result in results_zebra:
-                for box in result.boxes:
-                    confidence = float(box.conf[0])
-                    if confidence > 0.5:
-                        detections.append("zebra crossing detected")
-                        break
-        
-            audio_results_list = list(set(detections)) if detections else ["no objects detected"]
-        
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed during image processing: {e}")
+    # 4. Get timestamp and create user storage directory
+    detection_timestamp = datetime.now()
+    user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
     
-        # 4. Get timestamp and create user storage directory
-        detection_timestamp = datetime.now()
-        user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
-    
-        # 5. Generate audio file and save to user's directory
-        saved_audio_path = None
-        try:
-            generator = audio_generator.AudioGenerator(pause_duration=700)
-            temp_audio_path = generator.generate_audio_quick(audio_results_list)
+    # 5. Generate audio file and save to user's directory
+    saved_audio_path = None
+    try:
+        generator = audio_generator.AudioGenerator(pause_duration=700)
+        temp_audio_path = generator.generate_audio_quick(audio_results_list)
         
-            audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"
-            saved_audio_path = os.path.join(user_storage_dir, audio_filename)
-            shutil.move(temp_audio_path, saved_audio_path)
-            print(f"Audio saved to: {saved_audio_path}")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to generate audio: {e}")
+        # Move audio to permanent storage
+        audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"
+        saved_audio_path = os.path.join(user_storage_dir, audio_filename)
+        shutil.move(temp_audio_path, saved_audio_path)
+        print(f"Audio saved to: {saved_audio_path}")
+    except Exception as e:
+        print(f"Warning: Failed to generate/save audio: {e}")
 
-        # 6. Save image to user's directory
-        saved_image_path = None
-        try:
-            image_filename = f"image_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
-            saved_image_path = os.path.join(user_storage_dir, image_filename)
-            shutil.copy2(temp_image_path, saved_image_path)
-            print(f"Image saved to: {saved_image_path}")
-        except Exception as e:
-            print(f"Warning: Failed to save image to history: {e}")
+    # 6. Save image to user's directory
+    saved_image_path = None
+    try:
+        image_filename = f"image_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
+        saved_image_path = os.path.join(user_storage_dir, image_filename)
+        shutil.copy2(temp_image_path, saved_image_path)
+        print(f"Image saved to: {saved_image_path}")
+    except Exception as e:
+        print(f"Warning: Failed to save image to history: {e}")
 
-        # 7. Save results to history
-        try:
-            history_entry = models.DetectionHistory(
-                user_id=user_id,
-                results=audio_results_list,
-                image_path=saved_image_path,
-                audio_path=saved_audio_path,
-                media_type="image"
-            )
-            db.add(history_entry)
-            db.commit()
-            db.refresh(history_entry)
-            detection_id = history_entry.id
-        except Exception as e:
-            db.rollback()
-            print(f"Failed to save history: {e}")
-            detection_id = None
+    # 7. Save results to history (including image and audio paths)
+    try:
+        history_entry = models.DetectionHistory(
+            user_id=user_id,
+            results=audio_results_list,
+            image_path=saved_image_path,
+            audio_path=saved_audio_path,
+            media_type="image"
+        )
+        db.add(history_entry)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to save history: {e}")
 
-        # 8. Clean up the temporary image
-        try:
-            os.remove(temp_image_path)
-        except Exception as e:
-            print(f"Warning: Failed to delete temporary file {temp_image_path}: {e}")
+    # 8. Clean up the temporary image
+    try:
+        os.remove(temp_image_path)
+    except Exception as e:
+        print(f"Warning: Failed to delete temporary file {temp_image_path}: {e}")
 
-        # 9. Return both text results and file info
-        return {
-            "text_results": audio_results_list,
-            "audio_file": os.path.basename(saved_audio_path) if saved_audio_path else None,
-            "audio_url": f"/history/audio/{detection_id}" if detection_id else None,
-            "image_url": f"/history/image/{detection_id}" if detection_id else None,
-            "detection_id": detection_id,
-            "media_type": "image"
-        }
+    # 9. Return the detection results to the frontend
+    return audio_results_list
+
+
+@router.post("/image/{user_id}/with-audio", response_model=Dict)
+async def detect_image_with_audio(
+    user_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Process image and return both text results and audio file path.
+    """
+    # Get the single model from app state
+    model = request.app.state.model
+    
+    # 1. Check if user exists
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # 2. Save image to a temporary file
+    file_extension = os.path.splitext(file.filename)[1]
+    if file_extension.lower() not in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']:
+        raise HTTPException(status_code=400, detail="Invalid image format. Supported: jpg, jpeg, png, bmp, webp")
+    
+    temp_filename = f"{uuid.uuid4()}{file_extension}"
+    temp_image_path = os.path.join(TEMP_UPLOAD_DIR, temp_filename)
+
+    try:
+        with open(temp_image_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save image file: {e}")
+    finally:
+        file.file.close()
+
+    # 3. Run detection on the image
+    try:
+        detections = []
+        
+        # Custom YOLOv8n: Car (0), Person (1), Green Light (2), zebra crossing (3)
+        results = model(temp_image_path, conf=0.5, verbose=False)
+        for result in results:
+            for box in result.boxes:
+                class_id = int(box.cls[0])
+                confidence = float(box.conf[0])
+                if confidence > 0.5:
+                    class_name = result.names[class_id]
+                    detections.append(f"{class_name} detected")
+        
+        audio_results_list = list(set(detections)) if detections else ["no objects detected"]
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed during image processing: {e}")
+    
+    # 4. Get timestamp and create user storage directory
+    detection_timestamp = datetime.now()
+    user_storage_dir = get_user_storage_path(user.username, detection_timestamp)
+    
+    # 5. Generate audio file and save to user's directory
+    saved_audio_path = None
+    try:
+        generator = audio_generator.AudioGenerator(pause_duration=700)
+        temp_audio_path = generator.generate_audio_quick(audio_results_list)
+        
+        audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"
+        saved_audio_path = os.path.join(user_storage_dir, audio_filename)
+        shutil.move(temp_audio_path, saved_audio_path)
+        print(f"Audio saved to: {saved_audio_path}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate audio: {e}")
+
+    # 6. Save image to user's directory
+    saved_image_path = None
+    try:
+        image_filename = f"image_{detection_timestamp.strftime('%H-%M-%S')}{file_extension}"
+        saved_image_path = os.path.join(user_storage_dir, image_filename)
+        shutil.copy2(temp_image_path, saved_image_path)
+        print(f"Image saved to: {saved_image_path}")
+    except Exception as e:
+        print(f"Warning: Failed to save image to history: {e}")
+
+    # 7. Save results to history
+    try:
+        history_entry = models.DetectionHistory(
+            user_id=user_id,
+            results=audio_results_list,
+            image_path=saved_image_path,
+            audio_path=saved_audio_path,
+            media_type="image"
+        )
+        db.add(history_entry)
+        db.commit()
+        db.refresh(history_entry)
+        detection_id = history_entry.id
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to save history: {e}")
+        detection_id = None
+
+    # 8. Clean up the temporary image
+    try:
+        os.remove(temp_image_path)
+    except Exception as e:
+        print(f"Warning: Failed to delete temporary file {temp_image_path}: {e}")
+
+    # 9. Return both text results and file info
+    return {
+        "text_results": audio_results_list,
+        "audio_file": os.path.basename(saved_audio_path) if saved_audio_path else None,
+        "audio_url": f"/history/audio/{detection_id}" if detection_id else None,
+        "image_url": f"/history/image/{detection_id}" if detection_id else None,
+        "detection_id": detection_id,
+        "media_type": "image"
+    }

@@ -3,39 +3,24 @@ from collections import defaultdict
 from ultralytics import YOLO
 
 # ================================================================
-# CONFIGURATION - Multi-Model Detection System
+# CONFIGURATION - Single Model Detection System
 # ================================================================
 FRAME_GROUPING_WINDOW = 120
-CONFIDENCE_THRESHOLD = 0.7
+CONFIDENCE_THRESHOLD = 0.65
 
-# YOLOv8m standard COCO class names (we use cars, people, etc.)
-# Full COCO classes: https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco.yaml
+# Custom YOLOv8n Model - Only 4 Classes
+# Class indices based on your new trained model
 YOLO_CLASS_NAMES = {
-    0: "Person",
-    1: "Bicycle",
-    2: "Car",
-    3: "Motorcycle",
-    5: "Bus",
-    7: "Truck",
-    # Add more as needed, but we exclude class 9 (traffic light) in video_processor
-}
-
-# Traffic Lights Model - Classes 2, 3, 4 correspond to light colors
-TRAFFIC_LIGHT_CLASS_NAMES = {
+    0: "Car",
+    1: "Person",
     2: "Green Light",
-    3: "Red Light",
-    4: "Yellow Light"
-}
-
-# Zebra Crossing Model - Class 8 is zebra crossing
-ZEBRA_CLASS_NAMES = {
-    8: "Zebra Crossing"
+    3: "zebra crossing"
 }
 
 # Categories for detection logic
-VEHICLE_CLASSES = ["Car", "Bus", "Truck", "Motorcycle", "Bicycle"]
-TRAFFIC_LIGHTS = ["Green Light", "Red Light", "Yellow Light"]
-ZEBRA_CROSSING = ["Zebra Crossing"]
+VEHICLE_CLASSES = ["Car"]
+TRAFFIC_LIGHTS = ["Green Light"]
+ZEBRA_CROSSING = ["zebra crossing"]
 
 # ================================================================
 # HELPER FUNCTIONS (Copied from Context 2)
@@ -102,7 +87,7 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
     messages = []
     priority_scores = []
     
-    # Check for traffic lights first (highest priority)
+    # Check for traffic lights first (highest priority) - Only Green Light now
     for key, dets in grouped_detections.items():
         if any(light in key for light in TRAFFIC_LIGHTS):
             det = dets[0]
@@ -111,17 +96,9 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
             if not should_announce(key, frame_count, detection_state):
                 continue
             
-            # Handle different traffic light colors
+            # Only Green Light is detected
             if "Green Light" in det['label']:
                 msg = "Green light ahead. It's safe to cross."
-                messages.append(msg)
-                priority_scores.append(9)
-            elif "Red Light" in det['label']:
-                msg = "Red light ahead. Stop and wait."
-                messages.append(msg)
-                priority_scores.append(10)  # Red light is highest priority
-            elif "Yellow Light" in det['label']:
-                msg = "Yellow light ahead. Prepare to stop."
                 messages.append(msg)
                 priority_scores.append(9)
     
@@ -136,7 +113,7 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
                 zebra_key = key
             break
     
-    # Check for vehicles and people
+    # Check for vehicles (only Car) and people
     vehicles_left = []
     vehicles_right = []
     vehicles_center = []
@@ -153,7 +130,7 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
         if det['conf'] < CONFIDENCE_THRESHOLD:
             continue
         
-        if label in VEHICLE_CLASSES:
+        if label in VEHICLE_CLASSES:  # Only "Car" now
             vehicle_info = {
                 'label': label,
                 'horiz': horiz,
@@ -190,7 +167,7 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
         
         if should_announce(v['key'], frame_count, detection_state):
             count_str = f"{v['count']} " if v['count'] > 1 else "A "
-            vehicle_name = f"{v['label']}s" if v['count'] > 1 else v['label']
+            vehicle_name = "cars" if v['count'] > 1 else "car"  # Only "car" now
             
             if v['dist_score'] > 0.75:
                 msg = f"Watch out! {count_str}{vehicle_name} right in front of you! Stay where you are!"
@@ -213,7 +190,7 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
         
         if should_announce(v['key'], frame_count, detection_state):
             count_str = f"{v['count']} " if v['count'] > 1 else "A "
-            vehicle_name = f"{v['label']}s" if v['count'] > 1 else v['label']
+            vehicle_name = "cars" if v['count'] > 1 else "car"
             
             if v['dist_score'] > 0.75:
                 msg = f"Warning! {count_str}{vehicle_name} on your left side! Don't move!"
@@ -236,7 +213,7 @@ def generate_audio_message(grouped_detections, frame_count, fps, detection_state
         
         if should_announce(v['key'], frame_count, detection_state):
             count_str = f"{v['count']} " if v['count'] > 1 else "A "
-            vehicle_name = f"{v['label']}s" if v['count'] > 1 else v['label']
+            vehicle_name = "cars" if v['count'] > 1 else "car"
             
             if v['dist_score'] > 0.75:
                 msg = f"Warning! {count_str}{vehicle_name} on your right side! Don't move!"

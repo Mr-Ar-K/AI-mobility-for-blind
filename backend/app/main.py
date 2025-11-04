@@ -18,13 +18,11 @@ models.Base.metadata.create_all(bind=database.engine)
 import logging
 app = FastAPI(title="AI-Mobility-for-Blind Backend")
 
-# --- Logging Middleware for Investigating Invalid Requests ---
+# --- Optimized Logging Middleware ---
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    # Log method, path, and headers for every request
-    logging.info(f"Incoming request: {request.method} {request.url.path} from {request.client.host}:{request.client.port}")
-    for k, v in request.headers.items():
-        logging.info(f"Header: {k}: {v}")
+    # Log only essential info for performance (removed verbose header logging)
+    logging.info(f"Incoming request: {request.method} {request.url.path}")
     response = await call_next(request)
     return response
 
@@ -48,70 +46,58 @@ app.state.queue_enabled = True
 app.state.max_concurrency = max(1, (os.cpu_count() or 2) // 2)  # Conservative on CPU-only
 app.state.semaphore = asyncio.Semaphore(app.state.max_concurrency)
 
-# --- Load All Three Models at Startup ---
+# --- Load Single Custom Model at Startup ---
 @app.on_event("startup")
 def load_model():
-    print("Loading multi-model detection system...")
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f"Using device: {device}")
+    print("Loading custom YOLOv8n detection model...")
+    
+    # Auto-select best available device (GPU or CPU)
+    if torch.cuda.is_available():
+        device = 'cuda'
+        gpu_name = torch.cuda.get_device_name(0)
+        gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        print(f"🚀 GPU detected: {gpu_name} ({gpu_memory:.2f} GB)")
+        print(f"Using device: {device}")
+    else:
+        device = 'cpu'
+        cpu_count = os.cpu_count() or 1
+        print(f"💻 Using CPU with {cpu_count} cores")
+        print(f"Using device: {device}")
+    
     print("✅ Multi-user task queue initialized")
     
-    # Model 1: YOLOv8m (for general objects - cars, people, etc.)
-    print(f"Loading YOLOv8m model from: {settings.MODEL_PATH_YOLO}")
-    app.state.model_yolo = YOLO(settings.MODEL_PATH_YOLO)
+    # Load Custom YOLOv8n Model: Car, Person, Green Light, zebra crossing
+    print(f"Loading custom YOLOv8n model from: {settings.MODEL_PATH}")
+    app.state.model = YOLO(settings.MODEL_PATH)
+    
     try:
-        app.state.model_yolo.to(device)
-        # Fuse Conv+BN for speed and use half precision on CUDA when available
+        app.state.model.to(device)
+        
+        # Optimize model for performance
         try:
-            app.state.model_yolo.fuse()
-        except Exception:
-            pass
+            app.state.model.fuse()  # Fuse Conv+BN layers for speed
+            print("✅ Model layers fused for optimized inference")
+        except Exception as e:
+            print(f"⚠️  Layer fusion skipped: {e}")
+        
+        # Use half precision (FP16) on CUDA for faster inference
         if device == 'cuda':
             try:
-                app.state.model_yolo.model.half()
-            except Exception:
-                pass
-    except Exception as _:
-        pass
-    print("✅ YOLOv8m model loaded successfully.")
+                app.state.model.model.half()
+                print("✅ FP16 (half precision) enabled for faster GPU inference")
+            except Exception as e:
+                print(f"⚠️  FP16 optimization skipped: {e}")
+        
+        # Set optimal number of threads for CPU
+        if device == 'cpu':
+            torch.set_num_threads(max(1, (os.cpu_count() or 2) // 2))
+            print(f"✅ CPU threads optimized: {torch.get_num_threads()} threads")
+            
+    except Exception as e:
+        print(f"⚠️  Model optimization failed: {e}")
     
-    # Model 2: Traffic Lights specialist
-    print(f"Loading Traffic Lights model from: {settings.MODEL_PATH_TRAFFIC_LIGHTS}")
-    app.state.model_lights = YOLO(settings.MODEL_PATH_TRAFFIC_LIGHTS)
-    try:
-        app.state.model_lights.to(device)
-        try:
-            app.state.model_lights.fuse()
-        except Exception:
-            pass
-        if device == 'cuda':
-            try:
-                app.state.model_lights.model.half()
-            except Exception:
-                pass
-    except Exception as _:
-        pass
-    print("✅ Traffic Lights model loaded successfully.")
-    
-    # Model 3: Zebra Crossing specialist
-    print(f"Loading Zebra Crossing model from: {settings.MODEL_PATH_ZEBRA_CROSSING}")
-    app.state.model_zebra = YOLO(settings.MODEL_PATH_ZEBRA_CROSSING)
-    try:
-        app.state.model_zebra.to(device)
-        try:
-            app.state.model_zebra.fuse()
-        except Exception:
-            pass
-        if device == 'cuda':
-            try:
-                app.state.model_zebra.model.half()
-            except Exception:
-                pass
-    except Exception as _:
-        pass
-    print("✅ Zebra Crossing model loaded successfully.")
-    
-    print("🎉 All models loaded successfully!")
+    print("🎉 Custom YOLOv8n model loaded and optimized successfully!")
+    print("📊 Model detects: Car, Person, Green Light, zebra crossing")
 
 # --- Include Routers ---
 app.include_router(users.router)

@@ -8,10 +8,8 @@ ENV_FILE = BACKEND_DIR / ".env"
 
 class Settings(BaseSettings):
     DATABASE_URL: str
-    # Three model paths for the multi-model detection system
-    MODEL_PATH_YOLO: str = "models/yolov8m.pt"
-    MODEL_PATH_TRAFFIC_LIGHTS: str = "models/traffic lights.pt"
-    MODEL_PATH_ZEBRA_CROSSING: str = "models/zebra crossing.pt"
+    # Single custom model path for 4-class detection: Car, Person, Green Light, zebra crossing
+    MODEL_PATH: str = "models/Yolov8n.pt"
     Backend_PORT: str = "http://localhost:8000"
     Backend_PORT_FALLBACK: str = "http://0.0.0.0:8000"
     # Storage paths for history files

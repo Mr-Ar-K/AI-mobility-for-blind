@@ -45,22 +45,16 @@ class AudioGenerator:
         # Remove frame numbers
         clean = re.sub(r"\[Frame \d+\]\s*", "", clean)
         
-        # Replace technical terms with natural language
+        # Replace technical terms with natural language (only 4 classes now)
         replacements = {
-            "Green-traffic-lights": "Green light ahead, it's safe to cross",
-            "Red-traffic-lights": "Red light ahead, stop and wait",
-            "Yellow-traffic-lights": "Yellow light ahead, prepare to stop",
             "Green Light": "Green light ahead, it's safe to cross",
-            "Red Light": "Red light ahead, stop and wait",
-            "Yellow Light": "Yellow light ahead, prepare to stop",
-            "Zebra Crossing": "Zebra crossing detected",
             "zebra crossing": "Zebra crossing detected",
             "Person on your right": "Someone is on your right side",
             "Person on your left": "Someone is on your left side",
             "Person": "Person detected",
             "Car": "Car detected",
-            "Bus": "Bus detected",
-            "Truck": "Truck detected",
+            "cars": "Cars detected",
+            "car": "Car detected",
         }
         
         for old, new in replacements.items():
