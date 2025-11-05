@@ -62,18 +62,27 @@ COLORS = {
 
 class _FrameWriter:
     """Unified frame writer that wraps either imageio-ffmpeg or OpenCV VideoWriter."""
-    def __init__(self, writer, mode: str, frame_size: tuple[int, int], fps: float):
+    def __init__(self, writer, mode: str, frame_size: tuple[int, int], fps: float, original_size: tuple[int, int] = None):
         self._writer = writer
         self._mode = mode  # 'imageio' or 'cv2'
         self._size = frame_size
+        self._original_size = original_size or frame_size
         self._fps = fps
+    
     def write(self, frame: np.ndarray):
         if self._mode == 'imageio':
+            # Resize frame if needed to match encoder expectations
+            if frame.shape[1] != self._size[0] or frame.shape[0] != self._size[1]:
+                frame = cv2.resize(frame, self._size)
             # Convert BGR -> RGB for imageio/ffmpeg
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self._writer.append_data(rgb)
         else:
+            # Resize for OpenCV if needed
+            if frame.shape[1] != self._size[0] or frame.shape[0] != self._size[1]:
+                frame = cv2.resize(frame, self._size)
             self._writer.write(frame)
+    
     def release(self):
         if self._mode == 'imageio':
             try:
@@ -92,25 +101,33 @@ def _open_video_writer(output_path: str, fps: float, frame_size: tuple[int, int]
     # Prefer imageio-ffmpeg if available to produce H.264/yuv420p MP4
     if _HAS_IMAGEIO_FFMPEG and output_path.lower().endswith('.mp4'):
         try:
+            # Ensure frame size is divisible by 16 (macro block size) to avoid warnings
+            width, height = frame_size
+            adjusted_width = (width + 15) // 16 * 16
+            adjusted_height = (height + 15) // 16 * 16
+            adjusted_size = (adjusted_width, adjusted_height)
+            
             writer = imageio.get_writer(
                 output_path,
                 fps=fps,
                 codec='libx264',
                 format='ffmpeg',
+                pixelformat='yuv420p',
+                macro_block_size=1,  # Prevent automatic resizing
                 output_params=[
-                    '-pix_fmt', 'yuv420p',
                     '-movflags', '+faststart',
-                    # Compatibility/performance tuning
-                    '-preset', 'veryfast',    # speed up encoding
-                    '-crf', '23',             # reasonable quality-size tradeoff
-                    '-profile:v', 'baseline', # broad device compatibility
-                    '-level', '3.0',
-                    '-g', str(max(24, int(fps) * 2) if fps else 48),  # GOP size
-                    '-bf', '0',               # disable B-frames for some players
+                    '-preset', 'veryfast',
+                    '-crf', '23',
+                    '-profile:v', 'high',  # Use high profile for better quality at 1080p
+                    '-level', '4.1',       # Level 4.1 supports 1920x1080@30fps
+                    '-g', str(max(24, int(fps) * 2) if fps else 48),
+                    '-bf', '2',            # Allow 2 B-frames for better compression
+                    '-vsync', 'cfr',       # Constant frame rate
+                    '-r', str(fps),
                 ],
             )
-            print("Using imageio-ffmpeg (libx264) for MP4 output")
-            return _FrameWriter(writer, 'imageio', frame_size, fps), 'libx264'
+            print(f"Using imageio-ffmpeg (libx264) for MP4 output - Size: {adjusted_size}")
+            return _FrameWriter(writer, 'imageio', adjusted_size, fps, frame_size), 'libx264'
         except Exception as e:
             print(f"imageio-ffmpeg unavailable or failed: {e}. Falling back to OpenCV VideoWriter.")
 
@@ -127,7 +144,7 @@ def _open_video_writer(output_path: str, fps: float, frame_size: tuple[int, int]
             writer = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
             if writer.isOpened():
                 print(f"VideoWriter initialized with codec {fourcc_name} - {desc}")
-                return _FrameWriter(writer, 'cv2', frame_size, fps), fourcc_name
+                return _FrameWriter(writer, 'cv2', frame_size, fps, frame_size), fourcc_name
             else:
                 try:
                     writer.release()

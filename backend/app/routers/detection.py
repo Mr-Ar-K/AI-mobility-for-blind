@@ -178,7 +178,7 @@ async def detect_video(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(database.get_db),
-    lang: Optional[str] = 'en',
+    lang: Optional[str] = None,  # If not provided, use user's preference
     background_tasks: BackgroundTasks = None,
 ):
     # Get the single model from app state
@@ -193,10 +193,13 @@ async def detect_video(
         "estimated_time": None
     }
     
-    # 1. Check if user exists
+    # 1. Check if user exists and get language preference
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Use provided language or fall back to user's preference
+    audio_lang = lang if lang else (user.language or 'en')
 
     # 2. Save video to a temporary file
     # Create a unique filename to avoid conflicts
@@ -251,7 +254,7 @@ async def detect_video(
         temp_video_path,
         saved_video_path,
         request.app.state.model,
-        lang or 'en',
+        audio_lang,
         user_id,
         user.username,
     )
@@ -266,7 +269,7 @@ async def detect_video_with_audio(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(database.get_db),
-    lang: Optional[str] = 'en'
+    lang: Optional[str] = None  # If not provided, use user's preference
 ):
     """
     Process video and return both text results and audio file path.
@@ -275,10 +278,13 @@ async def detect_video_with_audio(
     # Get the single model from app state
     model = request.app.state.model
     
-    # 1. Check if user exists
+    # 1. Check if user exists and get language preference
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Use provided language or fall back to user's preference
+    audio_lang = lang if lang else (user.language or 'en')
 
     # 2. Save video to a temporary file
     file_extension = os.path.splitext(file.filename)[1]
@@ -341,7 +347,7 @@ async def detect_video_with_audio(
     saved_audio_path = None
     audio_start = time.time()
     try:
-        generator = audio_generator.AudioGenerator(language=lang or 'en', pause_duration=250)
+        generator = audio_generator.AudioGenerator(language=audio_lang, pause_duration=250)
         temp_audio_path = generator.generate_audio_quick(audio_results_list)
         
         # Move audio to permanent storage
@@ -428,7 +434,8 @@ async def detect_image(
     user_id: int,
     request: Request,
     file: UploadFile = File(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    lang: Optional[str] = None  # If not provided, use user's preference
 ):
     """
     Process an uploaded image and detect objects.
@@ -437,10 +444,13 @@ async def detect_image(
     # Get the single model from app state
     model = request.app.state.model
     
-    # 1. Check if user exists
+    # 1. Check if user exists and get language preference
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Use provided language or fall back to user's preference
+    audio_lang = lang if lang else (user.language or 'en')
 
     # 2. Save image to a temporary file
     file_extension = os.path.splitext(file.filename)[1]
@@ -486,7 +496,7 @@ async def detect_image(
     # 5. Generate audio file and save to user's directory
     saved_audio_path = None
     try:
-        generator = audio_generator.AudioGenerator(pause_duration=700)
+        generator = audio_generator.AudioGenerator(language=audio_lang, pause_duration=700)
         temp_audio_path = generator.generate_audio_quick(audio_results_list)
         
         # Move audio to permanent storage
@@ -537,7 +547,8 @@ async def detect_image_with_audio(
     user_id: int,
     request: Request,
     file: UploadFile = File(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    lang: Optional[str] = None  # If not provided, use user's preference
 ):
     """
     Process image and return both text results and audio file path.
@@ -545,10 +556,13 @@ async def detect_image_with_audio(
     # Get the single model from app state
     model = request.app.state.model
     
-    # 1. Check if user exists
+    # 1. Check if user exists and get language preference
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Use provided language or fall back to user's preference
+    audio_lang = lang if lang else (user.language or 'en')
 
     # 2. Save image to a temporary file
     file_extension = os.path.splitext(file.filename)[1]
@@ -592,7 +606,7 @@ async def detect_image_with_audio(
     # 5. Generate audio file and save to user's directory
     saved_audio_path = None
     try:
-        generator = audio_generator.AudioGenerator(pause_duration=700)
+        generator = audio_generator.AudioGenerator(language=audio_lang, pause_duration=700)
         temp_audio_path = generator.generate_audio_quick(audio_results_list)
         
         audio_filename = f"audio_{detection_timestamp.strftime('%H-%M-%S')}.mp3"

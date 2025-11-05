@@ -21,7 +21,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)
     new_user = models.User(
         username=user.username,
         email=user.email,
-        password=user.password 
+        password=user.password,
+        language=user.language or 'en'  # Default to English if not provided
     )
     
     db.add(new_user)
@@ -32,9 +33,9 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)
 @router.post("/login", response_model=schemas.User)
 def login_user(form_data: schemas.UserLogin, db: Session = Depends(database.get_db)):
     # Accept either username OR email in the 'username' field
-    # Only load required columns for speed
+    # Load required columns including language preference
     user = (
-        db.query(models.User.id, models.User.username, models.User.email, models.User.password)
+        db.query(models.User.id, models.User.username, models.User.email, models.User.password, models.User.language)
         .filter((models.User.username == form_data.username) | (models.User.email == form_data.username))
         .first()
     )
@@ -52,11 +53,12 @@ def login_user(form_data: schemas.UserLogin, db: Session = Depends(database.get_
             detail="Invalid password"
         )
 
-    # Return only required fields
+    # Return user info including language preference
     return {
         "id": user.id,
         "username": user.username,
-        "email": user.email
+        "email": user.email,
+        "language": user.language or 'en'
     }
 
 @router.get("/{user_id}", response_model=schemas.User)
@@ -66,11 +68,8 @@ def get_user(user_id: int, db: Session = Depends(database.get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-class UserUpdate(schemas.UserBase):
-    pass
-
 @router.put("/{user_id}", response_model=schemas.User)
-def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(database.get_db)):
+def update_user(user_id: int, payload: schemas.UserUpdate, db: Session = Depends(database.get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -87,6 +86,10 @@ def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(databas
         if exists_e:
             raise HTTPException(status_code=400, detail="Email already registered")
         user.email = payload.email
+
+    # Update language preference if provided
+    if payload.language and payload.language in ['en', 'te', 'hi']:
+        user.language = payload.language
 
     db.add(user)
     db.commit()

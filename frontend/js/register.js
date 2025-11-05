@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const usernameInput = document.getElementById('username');
 	const emailInput = document.getElementById('email');
 	const passwordInput = document.getElementById('password');
+	const languageSelect = document.getElementById('language');
 	const registerButton = document.getElementById('register-button');
 	const errorMessage = document.getElementById('error-message');
 
@@ -18,9 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			const username = usernameInput.value;
 			const email = emailInput.value;
 			const password = passwordInput.value;
+			const language = languageSelect.value;
 
 			// Call the register function from api.js
-			await register(username, email, password);
+			await register(username, email, password, language);
 
 			// On success, tell the user and redirect to login
 			errorMessage.textContent = 'Account created successfully! Redirecting to login...';
