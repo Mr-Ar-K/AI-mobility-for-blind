@@ -9,14 +9,16 @@ This application combines a powerful FastAPI backend with YOLO object detection 
 ## 🌟 Features
 
 ### Core Functionality
-- **Multi-Model Object Detection**: Uses three specialized YOLO models:
-  - General object detection (YOLOv8m) - cars, people, etc.
-  - Traffic lights detection
-  - Zebra crossing detection
-- **Video & Image Processing**: Upload videos or images for instant object detection
+- **Custom YOLOv8n Object Detection**: Single optimized model detecting 4 essential classes:
+  - Car
+  - Person
+  - Green Light
+  - Zebra crossing
+- **Video & Image Processing**: Upload videos or images for instant object detection with annotated output
 - **Text-to-Speech Audio Feedback**: Automatically generates audio descriptions of detected objects
 - **Detection History**: Saves all detections with video/image and audio files organized by user and timestamp
 - **User Authentication**: Secure user registration and login system
+- **Browser-Optimized Video Playback**: H.264 encoded MP4s play smoothly in all modern browsers and VLC
 
 ### Voice Control (Hands-Free Operation)
 - **Complete Voice Navigation**: Navigate the entire app using voice commands
@@ -114,29 +116,34 @@ sudo -u postgres psql -c "CREATE DATABASE ai_mobility_db;"
 
 ### 3) Configure Backend Settings
 
-Create or edit `backend/.env` file:
+Copy the example environment file and configure it:
+
+```powershell
+cd backend
+copy .env.example .env
+```
+
+Then edit `backend/.env` file and update the PostgreSQL password:
 
 ```env
 # Database connection - UPDATE WITH YOUR PASSWORD
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost/ai_mobility_db
 
-# Model paths (three models for multi-detection)
-MODEL_PATH_YOLO=models/yolov8m.pt
-MODEL_PATH_TRAFFIC_LIGHTS=models/traffic lights.pt
-MODEL_PATH_ZEBRA_CROSSING=models/zebra crossing.pt
+# Custom YOLOv8n model path
+MODEL_PATH=models/Yolov8n.pt
 
-# Backend URLs (for frontend configuration)
-Backend_PORT=https://cjcf4dl2-8000.inc1.devtunnels.ms
-Backend_PORT_FALLBACK=http://0.0.0.0:8000
+# Backend URLs (localhost for development)
+Backend_PORT=http://localhost:8000
+Backend_PORT_FALLBACK=http://localhost:8000
 
-# Storage directories
+# Storage directories (auto-created)
 HISTORY_STORAGE_DIR=storage/history
 TEMP_UPLOAD_DIR=tmp/
 ```
 
 **Important**: 
 - Replace `YOUR_PASSWORD` with your PostgreSQL password
-- Ensure all three YOLO model files exist in the `backend/models/` directory
+- Ensure `Yolov8n.pt` model file exists in the `backend/models/` directory
 
 ### 4) Start the Backend Server (FastAPI)
 
@@ -367,8 +374,9 @@ Voice control activates automatically on page load and announces _"Voice control
 - Confirm credentials in `backend/.env`
 
 **Model loading errors**
-- Ensure all three `.pt` files exist in `backend/models/`
-- Check file paths in `.env` match actual locations
+- Ensure `Yolov8n.pt` file exists in `backend/models/`
+- Check MODEL_PATH in `.env` matches actual location
+- Model file should be approximately 6-10 MB
 
 ### Frontend Issues
 
@@ -387,9 +395,9 @@ Voice control activates automatically on page load and announces _"Voice control
 - Ensure detection has completed successfully
 
 **Backend connection fails**
-- Primary DevTunnel may be down - system auto-falls back to localhost
 - Ensure backend is running on port 8000
-- Check `API_BASES` array in `frontend/js/api.js`
+- Check if port 8000 is already in use: `netstat -ano | findstr :8000`
+- Verify backend URL in `frontend/js/config.js` is set to `http://localhost:8000`
 
 ---
 
