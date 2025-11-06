@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 	const uploadForm = document.getElementById('upload-form');
 	const videoInput = document.getElementById('video-input');
+	const audioLanguageSelect = document.getElementById('audio-language');
 	const uploadButton = document.getElementById('upload-button');
 	const resultsContainer = document.getElementById('results-container');
 	const progressSection = document.getElementById('progress-section');
@@ -66,8 +67,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		const startTime = Date.now();
 
 		try {
+			// Get selected language (empty string means use user preference)
+			const selectedLang = audioLanguageSelect ? audioLanguageSelect.value : null;
+			
 			// Start detection using task_id
-			const startRes = await startDetection(file);
+			const startRes = await startDetection(file, selectedLang || null);
 			const taskId = startRes.task_id;
 			if (!taskId) throw new Error('No task id returned from server');
 

@@ -70,11 +70,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 				videoPlayer.style.maxWidth = '640px';
 				videoPlayer.style.borderRadius = '8px';
 				videoPlayer.style.backgroundColor = '#000';
+				videoPlayer.preload = 'metadata'; // fast first preview
 				const videoUrl = `${API_URL}/history/video/${item.id}`;
 				console.log('Video URL:', videoUrl);
-				// Backend serves video at /history/video/{id}
-				videoPlayer.src = videoUrl;
-				videoPlayer.preload = 'metadata';
+				// Use a <source> with explicit MIME type for better compatibility
+				const source = document.createElement('source');
+				source.src = videoUrl;
+				source.type = 'video/mp4';
+				videoPlayer.appendChild(source);
 				
 				// Add loading/error feedback
 				videoPlayer.onloadstart = function() {
@@ -94,6 +97,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 					errorMsg.className = 'error-text';
 					errorMsg.textContent = `⚠️ Could not load video (Error ${videoPlayer.error?.code || 'unknown'})`;
 					videoContainer.appendChild(errorMsg);
+					// Fallback: show download link so user can open in native player
+					const dl = document.createElement('a');
+					dl.href = videoUrl;
+					dl.textContent = 'Download video';
+					dl.style.display = 'inline-block';
+					dl.style.marginTop = '8px';
+					videoContainer.appendChild(dl);
 				};
 				
 				videoContainer.appendChild(videoPlayer);
@@ -124,19 +134,68 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 			// Audio Player
 			if (item.audio_path) {
+				const audioContainer = document.createElement('div');
+				audioContainer.style.marginTop = '1rem';
+				
 				const audioLabel = document.createElement('p');
 				audioLabel.style.fontWeight = 'bold';
-				audioLabel.style.marginTop = '0.5rem';
-				audioLabel.textContent = 'Audio Summary:';
-				card.appendChild(audioLabel);
+				audioLabel.style.marginBottom = '0.5rem';
+				audioLabel.textContent = '🔊 Audio Summary:';
+				audioContainer.appendChild(audioLabel);
 
 				const audioPlayer = document.createElement('audio');
 				audioPlayer.controls = true;
 				audioPlayer.style.width = '100%';
+				audioPlayer.style.marginBottom = '0.5rem';
 				// Backend serves audio at /history/audio/{id}
 				audioPlayer.src = `${API_URL}/history/audio/${item.id}`;
-				audioPlayer.playbackRate = (typeof getAudioRate === 'function') ? getAudioRate() : 1.3;
-				card.appendChild(audioPlayer);
+				audioPlayer.playbackRate = 1.0; // Default to normal speed
+				
+				// Add loading/error handling
+				audioPlayer.onerror = function(e) {
+					console.error('Audio load error:', e);
+					console.error('Failed to load audio:', audioPlayer.src);
+					const errorMsg = document.createElement('p');
+					errorMsg.className = 'error-text';
+					errorMsg.textContent = '⚠️ Could not load audio file';
+					audioContainer.appendChild(errorMsg);
+				};
+				
+				audioContainer.appendChild(audioPlayer);
+				
+				// Playback speed controls
+				const speedContainer = document.createElement('div');
+				speedContainer.style.display = 'flex';
+				speedContainer.style.gap = '0.5rem';
+				speedContainer.style.alignItems = 'center';
+				speedContainer.style.marginTop = '0.5rem';
+				
+				const speedLabel = document.createElement('span');
+				speedLabel.textContent = 'Speed:';
+				speedLabel.style.fontSize = '0.9rem';
+				speedContainer.appendChild(speedLabel);
+				
+				const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+				speeds.forEach(speed => {
+					const btn = document.createElement('button');
+					btn.textContent = speed === 1.0 ? 'Normal' : `${speed}x`;
+					btn.className = speed === 1.0 ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+					btn.style.padding = '0.25rem 0.75rem';
+					btn.style.fontSize = '0.85rem';
+					btn.onclick = () => {
+						audioPlayer.playbackRate = speed;
+						// Update button styles
+						speedContainer.querySelectorAll('button').forEach(b => {
+							b.className = 'btn btn-secondary btn-sm';
+						});
+						btn.className = 'btn btn-primary btn-sm';
+						announce(`Playback speed set to ${speed === 1.0 ? 'normal' : speed + 'x'}`);
+					};
+					speedContainer.appendChild(btn);
+				});
+				
+				audioContainer.appendChild(speedContainer);
+				card.appendChild(audioContainer);
 			}
 
 			// Add the new card to the grid

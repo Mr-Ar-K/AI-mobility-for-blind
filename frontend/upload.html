@@ -49,6 +49,16 @@
                            aria-describedby="video-hint">
                     <small id="video-hint" class="helper-text">Accepts .mp4, .avi, .mov, and other video formats</small>
                 </div>
+                <div class="form-group">
+                    <label for="audio-language">Audio Language (optional)</label>
+                    <select id="audio-language" class="input-field" aria-label="Select audio language for detection results">
+                        <option value="">Use My Preference</option>
+                        <option value="en">English</option>
+                        <option value="te">Telugu (తెలుగు)</option>
+                        <option value="hi">Hindi (हिंदी)</option>
+                    </select>
+                    <small class="helper-text">Leave as "Use My Preference" to use your profile language setting</small>
+                </div>
                 <button id="upload-button" type="submit" class="button button-primary button-full-width"
                         aria-label="Upload and process selected video">
                     Upload and Process Video

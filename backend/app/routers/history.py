@@ -1,6 +1,6 @@
 import os
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Dict
 from ..db import database, models, schemas
@@ -62,8 +62,21 @@ def get_detection_by_id(detection_id: int, db: Session = Depends(database.get_db
     return detection
 
 
+def _open_file_range(file_path: str, start: int, end: int, chunk_size: int = 1024 * 1024):
+    with open(file_path, 'rb') as f:
+        f.seek(start)
+        bytes_to_read = end - start + 1
+        while bytes_to_read > 0:
+            read_length = min(chunk_size, bytes_to_read)
+            data = f.read(read_length)
+            if not data:
+                break
+            bytes_to_read -= len(data)
+            yield data
+
+
 @router.get("/video/{detection_id}")
-def get_detection_video(detection_id: int, db: Session = Depends(database.get_db)):
+def get_detection_video(detection_id: int, request: Request, db: Session = Depends(database.get_db)):
     """
     Download/stream the video file for a specific detection.
     """
@@ -93,14 +106,50 @@ def get_detection_video(detection_id: int, db: Session = Depends(database.get_db
         '.mkv': 'video/x-matroska'
     }
     media_type = media_type_map.get(file_ext, 'video/mp4')
-    
-    print(f"Serving video: {detection.video_path} as {media_type}")
-    
-    return FileResponse(
+
+    # Support HTTP Range requests for smooth streaming
+    file_size = os.path.getsize(detection.video_path)
+    range_header = request.headers.get('range') or request.headers.get('Range')
+    if range_header:
+        # Example: "bytes=0-" or "bytes=1000-2000"
+        try:
+            units, rng = range_header.split('=')
+            if units.strip().lower() != 'bytes':
+                raise ValueError('Invalid units')
+            start_str, end_str = (rng or '').split('-')
+            start = int(start_str) if start_str else 0
+            end = int(end_str) if end_str else file_size - 1
+            start = max(0, start)
+            end = min(file_size - 1, end)
+            if start > end:
+                start = 0
+                end = file_size - 1
+
+            headers = {
+                'Content-Range': f'bytes {start}-{end}/{file_size}',
+                'Accept-Ranges': 'bytes',
+                'Content-Length': str(end - start + 1),
+                'Cache-Control': 'private, max-age=86400',
+            }
+            return StreamingResponse(
+                _open_file_range(detection.video_path, start, end),
+                status_code=206,
+                media_type=media_type,
+                headers=headers,
+            )
+        except Exception as e:
+            print(f"Range parse error: {e}, falling back to full file")
+
+    # Fallback: serve entire file
+    print(f"Serving video (full): {detection.video_path} as {media_type}")
+    resp = FileResponse(
         detection.video_path,
         media_type=media_type,
         filename=os.path.basename(detection.video_path)
     )
+    resp.headers['Accept-Ranges'] = 'bytes'
+    resp.headers['Cache-Control'] = 'private, max-age=86400'
+    return resp
 
 
 @router.get("/audio/{detection_id}")

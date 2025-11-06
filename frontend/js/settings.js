@@ -14,10 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
     msg.style.color = ok ? '#2e7d32' : '#c62828';
   }
 
-  // Load existing settings
+  // Load existing settings from user profile and local storage
   try {
     const s = (typeof getAppSettings === 'function') ? getAppSettings() : (JSON.parse(localStorage.getItem('app_settings')||'{}'));
-    if (s.language && langSel) langSel.value = s.language;
+    const user = (typeof getUser === 'function') ? getUser() : JSON.parse(localStorage.getItem('user') || 'null');
+    
+    // Prefer backend user language over local settings
+    const userLanguage = user?.language || s.language || 'en';
+    if (langSel) langSel.value = userLanguage;
     if (s.audioRate && audioSel) audioSel.value = String(s.audioRate);
     // Enforce compact tips globally: hide/disable banner option and force compact
     if (showTipsEl) {
@@ -41,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (_) {}
 
   if (!form) return;
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const language = langSel ? langSel.value : 'en';
     const audioRate = audioSel ? parseFloat(audioSel.value) : 1.3;
@@ -50,6 +54,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const compactVoiceTips = true;
     const theme = themeSel ? themeSel.value : 'light';
     const enableTones = tonesEl ? !!tonesEl.checked : true;
+    
+    // Save language preference to backend
+    try {
+      const user = (typeof getUser === 'function') ? getUser() : JSON.parse(localStorage.getItem('user') || 'null');
+      if (user && typeof updateUser === 'function') {
+        await updateUser(user.username, user.email, language);
+        showMessage('Settings and language preference saved.');
+      } else {
+        showMessage('Settings saved locally.');
+      }
+    } catch (err) {
+      console.error('Failed to update user language:', err);
+      showMessage('Settings saved locally (backend update failed).');
+    }
+    
+    // Save to local app settings
     try {
       if (typeof setAppSettings === 'function') {
         setAppSettings({ language, audioRate, showVoiceTips, compactVoiceTips, theme, enableTones });
@@ -61,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (_) {}
     // Apply theme live
     document.documentElement.setAttribute('data-theme', theme);
-    showMessage('Settings saved.');
     
     // Announce theme change for screen readers
     try {

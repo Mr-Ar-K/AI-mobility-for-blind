@@ -10,6 +10,7 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=False)  # Plain text for prototype
+    language = Column(String, default='en', nullable=False)  # Language preference: en, te, hi
 
     history_items = relationship("DetectionHistory", back_populates="owner")
 

@@ -141,10 +141,11 @@ async function login(emailOrUsername, password) {
  * @param {string} firstName - The user's first name (mapped to username).
  * @param {string} email - The user's email.
  * @param {string} password - The user's password.
+ * @param {string} language - The user's preferred audio language (en, te, hi).
  * @returns {Promise<object>} The new user object.
  */
-async function register(firstName, email, password) {
-	// Backend expects username, email, password at /users/signup
+async function register(firstName, email, password, language = 'en') {
+	// Backend expects username, email, password, language at /users/signup
 	return fetchWithFallback('/users/signup', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -152,6 +153,7 @@ async function register(firstName, email, password) {
 			username: firstName,
 			email: email,
 			password: password,
+			language: language,
 		}),
 	}).then(r => r.json());
 }
@@ -177,15 +179,18 @@ async function getCurrentUser() {
  * Updates the current user's profile.
  * @param {string} firstName - New first name (mapped to username).
  * @param {string} email - New email.
+ * @param {string} language - Preferred audio language (optional).
  * @returns {Promise<object>} Updated user.
  */
-async function updateUser(firstName, email) {
+async function updateUser(firstName, email, language = null) {
 	const user = getUser();
 	if (!user) throw new Error('Not logged in');
+	const payload = { username: firstName, email };
+	if (language) payload.language = language;
 	const res = await fetchWithFallback(`/users/${user.id}`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username: firstName, email })
+		body: JSON.stringify(payload)
 	});
 	if (!res.ok) throw new Error((await res.json().catch(()=>({}))).detail || 'Update failed');
 	const updated = await res.json();
@@ -196,14 +201,15 @@ async function updateUser(firstName, email) {
 /**
  * Uploads a video file for detection for current user.
  * @param {File} file - The video file to upload.
+ * @param {string} langOverride - Optional language override (if not provided, uses user preference).
  * @returns {Promise<object>} The detection results including audio_url.
  */
-async function uploadVideo(file) {
+async function uploadVideo(file, langOverride = null) {
 	const formData = new FormData();
 	formData.append('file', file); // 'file' must match the name in your FastAPI endpoint
 	const user = getUser();
 	if (!user) throw new Error('Not logged in');
-	const lang = (getAppSettings().language || 'en');
+	const lang = langOverride || getAppSettings().language || user?.language || 'en';
 	const res = await fetchWithFallback(`/detect/${user.id}/with-audio?lang=${encodeURIComponent(lang)}`, {
 		method: 'POST',
 		body: formData,
@@ -216,14 +222,15 @@ async function uploadVideo(file) {
  * Starts detection and returns a task id for progress polling.
  * Uses /detect/{user_id} which updates server-side progress_store.
  * @param {File} file
+ * @param {string} langOverride - Optional language override.
  * @returns {Promise<{task_id:string,message?:string}>}
  */
-async function startDetection(file) {
+async function startDetection(file, langOverride = null) {
 	const formData = new FormData();
 	formData.append('file', file);
 	const user = getUser();
 	if (!user) throw new Error('Not logged in');
-	const lang = (getAppSettings().language || 'en');
+	const lang = langOverride || getAppSettings().language || user?.language || 'en';
 	const res = await fetchWithFallback(`/detect/${user.id}?lang=${encodeURIComponent(lang)}`, {
 		method: 'POST',
 		body: formData,
